@@ -39,6 +39,7 @@ class AdminPanelProvider extends PanelProvider
             ->navigationGroups([
                 'Virtual Run & Event',
                 'Pendaftaran & Peserta',
+                'Pembaruan Sistem',
             ])
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')
