@@ -403,12 +403,32 @@ class TripayService
             ];
         }
 
+        // Tambahkan merchandise / add-on jika ada
+        foreach ($order->addons as $addonItem) {
+            $orderItems[] = [
+                'sku' => 'ADDON-'.($addonItem->event_addon_id ?? $addonItem->id),
+                'name' => 'Add-on: '.$addonItem->addon_name,
+                'price' => (int) round($addonItem->unit_price),
+                'quantity' => $addonItem->quantity,
+            ];
+        }
+
         // Tambahkan platform fee jika ada
         if ($order->platform_fee > 0) {
             $orderItems[] = [
                 'sku' => 'FEE-PLATFORM',
                 'name' => 'Biaya Layanan Platform',
                 'price' => (int) round($order->platform_fee),
+                'quantity' => 1,
+            ];
+        }
+
+        // Tambahkan ongkos kirim SPX jika ada
+        if ($order->shipping_cost > 0) {
+            $orderItems[] = [
+                'sku' => 'SHIPPING-SPX',
+                'name' => 'Ongkos Kirim SPX Regular',
+                'price' => (int) round($order->shipping_cost),
                 'quantity' => 1,
             ];
         }
@@ -423,10 +443,7 @@ class TripayService
             }
         }
 
-        $returnUrl = rtrim(config('app.url', 'https://app.jelatix.com'), '/')."/orders/{$order->order_code}";
-        if (str_contains($returnUrl, 'localhost') || str_contains($returnUrl, '127.0.0.1')) {
-            $returnUrl = "https://app.jelatix.com/orders/{$order->order_code}";
-        }
+        $returnUrl = env('TRIPAY_RETURN_URL') ?: url("/orders/{$order->order_code}");
 
         $payload = [
             'method' => $paymentMethod,

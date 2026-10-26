@@ -4,53 +4,70 @@ namespace App\Services;
 
 use App\Models\EventCategory;
 use App\Models\Participant;
-use Exception;
 use Illuminate\Support\Facades\DB;
 
 class BibGeneratorService
 {
     /**
-     * Generate nomor BIB otomatis untuk peserta saat pembayaran lunas
+     * Generate nomor BIB otomatis untuk peserta
+     * - Jika kategori memiliki bib_prefix: Menggunakan format prefix kategori (misal: 10K1001)
+     * - Jika bib_prefix kosong / virtual run: Menggunakan nomor numerik sederhana mulai dari 1001 bertambah global
      */
     public function autoAssignBib(Participant $participant): string
     {
-        // Jika sudah memiliki nomor BIB kustom VVIP, jangan ubah
-        if ($participant->is_custom_bib && ! empty($participant->bib_number)) {
+        if (! empty($participant->bib_number)) {
             return $participant->bib_number;
         }
 
         $category = $participant->category;
-        if (! $category) {
-            throw new Exception('Kategori lomba tidak ditemukan');
-        }
 
         return DB::transaction(function () use ($participant, $category) {
-            $prefix = $category->bib_prefix ?: '';
-            $startNum = (int) ($category->bib_start_number ?: 1001);
-            $reservedPool = (array) ($category->reserved_bib_numbers ?: []);
+            $prefix = $category?->bib_prefix ?: '';
+            $reservedPool = (array) ($category?->reserved_bib_numbers ?: []);
 
-            // Ambil semua nomor BIB yang sudah terpakai di kategori ini
-            $existingBibs = Participant::where('event_category_id', $category->id)
-                ->whereNotNull('bib_number')
-                ->where('id', '!=', $participant->id)
-                ->pluck('bib_number')
-                ->toArray();
+            if (! empty($prefix)) {
+                // Mode dengan prefix kategori
+                $startNum = (int) ($category->bib_start_number ?: 1001);
+                $existingBibs = Participant::where('event_category_id', $category->id)
+                    ->whereNotNull('bib_number')
+                    ->where('id', '!=', $participant->id)
+                    ->pluck('bib_number')
+                    ->toArray();
 
-            $candidateNum = $startNum;
-            while (true) {
-                $candidateBib = $prefix.$candidateNum;
+                $candidateNum = $startNum;
+                while (true) {
+                    $candidateBib = $prefix.$candidateNum;
 
-                // Cek apakah nomor ini masuk ke daftar reservasi VVIP atau sudah terpakai
-                if (! in_array($candidateNum, $reservedPool) &&
-                    ! in_array((string) $candidateNum, $reservedPool) &&
-                    ! in_array($candidateBib, $existingBibs)) {
-                    break;
+                    if (! in_array($candidateNum, $reservedPool) &&
+                        ! in_array((string) $candidateNum, $reservedPool) &&
+                        ! in_array($candidateBib, $existingBibs)) {
+                        break;
+                    }
+
+                    $candidateNum++;
                 }
 
-                $candidateNum++;
+                $finalBib = $prefix.$candidateNum;
+            } else {
+                // Mode Virtual Run Sederhana: Numerik murni tanpa prefix (1001, 1002, ...)
+                $startNum = (int) ($category?->bib_start_number ?: 1001);
+                $maxBib = DB::table('participants')
+                    ->whereNotNull('bib_number')
+                    ->whereRaw("bib_number GLOB '[0-9]*' AND bib_number NOT LIKE '%-%' AND bib_number NOT LIKE '%K%' AND LENGTH(bib_number) <= 8")
+                    ->selectRaw('MAX(CAST(bib_number AS INTEGER)) as max_bib')
+                    ->value('max_bib');
+
+                $candidateNum = ($maxBib && (int) $maxBib >= $startNum) ? ((int) $maxBib + 1) : $startNum;
+
+                while (in_array($candidateNum, $reservedPool) ||
+                       in_array((string) $candidateNum, $reservedPool) ||
+                       DB::table('participants')->where('bib_number', (string) $candidateNum)->exists()) {
+                    $candidateNum++;
+                }
+
+                $finalBib = (string) $candidateNum;
             }
 
-            $finalBib = $prefix.$candidateNum;
             $participant->update(['bib_number' => $finalBib]);
 
             return $finalBib;
@@ -58,38 +75,11 @@ class BibGeneratorService
     }
 
     /**
-     * Tetapkan nomor BIB kustom untuk tamu VVIP / Pejabat / Sponsor
-     */
-    public function assignCustomVipBib(
-        Participant $participant,
-        string $customBibNumber,
-        string $reason = 'Tamu VVIP'
-    ): bool {
-        // Cek duplikasi di kategori yang sama
-        $exists = Participant::where('event_category_id', $participant->event_category_id)
-            ->where('bib_number', $customBibNumber)
-            ->where('id', '!=', $participant->id)
-            ->exists();
-
-        if ($exists) {
-            throw new Exception("Nomor BIB {$customBibNumber} sudah digunakan oleh pelari lain pada kategori ini.");
-        }
-
-        return $participant->update([
-            'bib_number' => $customBibNumber,
-            'is_vip' => true,
-            'is_custom_bib' => true,
-            'custom_bib_reason' => $reason,
-        ]);
-    }
-
-    /**
-     * Remap / Urutkan ulang nomor BIB massal sebelum cetak fisik
-     * (Peserta dengan is_custom_bib = true akan terlindungi dan tidak tertimpa)
+     * Remap / Urutkan ulang nomor BIB massal
      */
     public function bulkRemapBibs(
         EventCategory $category,
-        string $sortBy = 'estimated_finish_time',
+        string $sortBy = 'created_at',
         string $direction = 'asc'
     ): int {
         return DB::transaction(function () use ($category, $sortBy, $direction) {
@@ -97,16 +87,7 @@ class BibGeneratorService
             $startNum = (int) ($category->bib_start_number ?: 1001);
             $reservedPool = (array) ($category->reserved_bib_numbers ?: []);
 
-            // Ambil nomor BIB milik peserta VVIP yang terkunci
-            $lockedBibs = Participant::where('event_category_id', $category->id)
-                ->where('is_custom_bib', true)
-                ->whereNotNull('bib_number')
-                ->pluck('bib_number')
-                ->toArray();
-
-            // Ambil seluruh peserta non-custom yang terdaftar dan lunas
             $participants = Participant::where('event_category_id', $category->id)
-                ->where('is_custom_bib', false)
                 ->whereHas('order', function ($query) {
                     $query->where('status', 'paid');
                 })
@@ -120,10 +101,8 @@ class BibGeneratorService
                 while (true) {
                     $candidateBib = $prefix.$currentNum;
 
-                    // Lewati nomor jika masuk ke pool reservasi atau sudah dipakai oleh VVIP
                     if (! in_array($currentNum, $reservedPool) &&
-                        ! in_array((string) $currentNum, $reservedPool) &&
-                        ! in_array($candidateBib, $lockedBibs)) {
+                        ! in_array((string) $currentNum, $reservedPool)) {
                         break;
                     }
 

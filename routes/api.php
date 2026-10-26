@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\DeployWebhookController;
+use App\Http\Controllers\Api\SpxShippingController;
 use App\Http\Controllers\Api\TripayWebhookController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -16,3 +17,7 @@ Route::post('/tripay/callback', [TripayWebhookController::class, 'handle'])->nam
 // GitHub Auto-Deploy Webhook (harus bebas CSRF)
 Route::post('/deploy', [DeployWebhookController::class, 'handle'])->name('api.deploy');
 Route::post('/webhooks/deploy', [DeployWebhookController::class, 'handle'])->name('api.webhooks.deploy');
+
+// SPX Shipping Endpoints
+Route::get('/shipping/spx/search', [SpxShippingController::class, 'search'])->name('api.shipping.spx.search');
+Route::post('/shipping/spx/calculate', [SpxShippingController::class, 'calculate'])->name('api.shipping.spx.calculate');

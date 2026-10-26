@@ -43,6 +43,13 @@ class MailketingService
             return true;
         }
 
+        // Cegah pengiriman email ke domain dummy / simulasi (mencegah bounce email seperti buyer@tripay.com, *@example.com)
+        if (preg_match('/@(tripay\.com|example\.com|test\.com|mailinator\.com)$/i', $recipientEmail)) {
+            Log::info("Mailketing [MOCK-DUMMY]: Skipped sending to test domain {$recipientEmail} - {$subject}");
+
+            return true;
+        }
+
         try {
             $payload = [
                 'api_token' => $this->apiToken,

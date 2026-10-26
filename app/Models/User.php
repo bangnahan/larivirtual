@@ -63,13 +63,13 @@ class User extends Authenticatable implements FilamentUser
         }
 
         if ($panel->getId() === 'admin') {
-            return $this->isSuperAdmin();
+            return $this->isSuperAdmin() || $this->role === 'admin';
         }
 
         if ($panel->getId() === 'organizer') {
             return $this->isSuperAdmin() || (($this->isOrganizer() || $this->isScannerCrew()) && $this->organizer_id !== null);
         }
 
-        return true;
+        return false;
     }
 }

@@ -2,15 +2,20 @@
 
 namespace App\Http\Controllers;
 
+use App\Jobs\SendMetaCapiPurchaseJob;
 use App\Jobs\SendPaymentPendingEmailJob;
 use App\Jobs\SendTicketEmailJob;
 use App\Models\Event;
+use App\Models\EventAddon;
 use App\Models\EventCategory;
 use App\Models\JerseySize;
 use App\Models\Order;
+use App\Models\OrderAddon;
 use App\Models\OrderItem;
+use App\Models\OrderShippingAddress;
 use App\Models\Participant;
 use App\Services\BibGeneratorService;
+use App\Services\SpxShippingService;
 use App\Services\TripayService;
 use Exception;
 use Illuminate\Http\JsonResponse;
@@ -23,21 +28,153 @@ class PublicRegistrationController extends Controller
 {
     public function __construct(
         protected TripayService $tripayService,
-        protected BibGeneratorService $bibService
+        protected BibGeneratorService $bibService,
+        protected SpxShippingService $shippingService
     ) {}
 
     /**
-     * Tampilkan formulir pendaftaran lomba lari publik
+     * Step 1: Tampilkan katalog pemilihan tiket & kuota (Tampilan ala Jelatix)
      */
     public function show(string $slug)
     {
         $event = Event::where('slug', $slug)
-            ->with(['categories' => fn ($q) => $q->where('is_active', true), 'jerseySizes', 'customFields'])
+            ->with([
+                'categories' => fn ($q) => $q->where('is_active', true)->orderBy('distance_km', 'asc'),
+                'addons' => fn ($q) => $q->where('is_active', true)->orderBy('sort_order'),
+                'organizer',
+            ])
             ->firstOrFail();
+
+        return view('public.register', compact('event'));
+    }
+
+    /**
+     * Step 2: Tampilkan formulir data peserta, SPX shipping, dan metode pembayaran
+     */
+    public function showParticipants(Request $request, string $slug)
+    {
+        $event = Event::where('slug', $slug)
+            ->with([
+                'categories' => fn ($q) => $q->where('is_active', true)->orderBy('distance_km', 'asc'),
+                'jerseySizes',
+                'customFields',
+                'addons' => fn ($q) => $q->where('is_active', true)->orderBy('sort_order'),
+                'organizer',
+            ])
+            ->firstOrFail();
+
+        $tickets = $request->input('tickets');
+        $addons = $request->input('addons');
+
+        // Jika request berupa GET (misalnya setelah validation error / reload), baca dari session
+        if (empty($tickets) && $request->isMethod('get')) {
+            $tickets = session()->get("event_{$event->id}_tickets", []);
+        }
+        if ($addons === null && $request->isMethod('get')) {
+            $addons = session()->get("event_{$event->id}_addons", []);
+        }
+
+        // Filter tiket dengan kuantitas > 0
+        $selectedTickets = [];
+        $totalCount = 0;
+        $totalPrice = 0;
+
+        if (is_array($tickets)) {
+            foreach ($tickets as $catId => $qty) {
+                $qty = (int) $qty;
+                if ($qty > 0) {
+                    $category = $event->categories->firstWhere('id', (int) $catId);
+                    if ($category) {
+                        $available = $category->available_slots;
+                        if ($qty > $available) {
+                            return redirect()->route('public.register.show', $slug)
+                                ->withErrors(['tickets' => "Jumlah tiket untuk kategori {$category->name} melebihi sisa kuota yang tersedia ({$available} tiket)."]);
+                        }
+                        $selectedTickets[$catId] = [
+                            'category' => $category,
+                            'qty' => $qty,
+                            'subtotal' => $category->getCurrentPrice() * $qty,
+                        ];
+                        $totalCount += $qty;
+                        $totalPrice += ($category->getCurrentPrice() * $qty);
+                    }
+                }
+            }
+        }
+
+        if ($totalCount <= 0) {
+            return redirect()->route('public.register.show', $slug)
+                ->withErrors(['tickets' => 'Silakan tentukan minimal 1 tiket lari sebelum melanjutkan ke pengisian data peserta.']);
+        }
+
+        if ($totalCount > 10) {
+            return redirect()->route('public.register.show', $slug)
+                ->withErrors(['tickets' => 'Maksimal pembelian tiket dalam satu transaksi adalah 10 tiket.']);
+        }
+
+        // Filter add-on dengan kuantitas > 0
+        $selectedAddons = [];
+        $totalAddonsPrice = 0;
+        $totalAddonsCount = 0;
+
+        if (is_array($addons)) {
+            foreach ($addons as $addonId => $qty) {
+                $qty = (int) $qty;
+                if ($qty > 0) {
+                    $addon = $event->addons->firstWhere('id', (int) $addonId);
+                    if ($addon && $addon->is_active) {
+                        if (! $addon->isUnlimited()) {
+                            $available = $addon->available_stock;
+                            if ($qty > $available) {
+                                return redirect()->route('public.register.show', $slug)
+                                    ->withErrors(['addons' => "Jumlah add-on {$addon->name} melebihi sisa stok yang tersedia ({$available} pcs)."]);
+                            }
+                        }
+                        $subtotalAddon = (float) $addon->price * $qty;
+                        $selectedAddons[$addonId] = [
+                            'addon' => $addon,
+                            'qty' => $qty,
+                            'unit_price' => (float) $addon->price,
+                            'subtotal' => $subtotalAddon,
+                        ];
+                        $totalAddonsCount += $qty;
+                        $totalAddonsPrice += $subtotalAddon;
+                    }
+                }
+            }
+        }
+
+        // Simpan tiket dan add-on ke session untuk antisipasi reload / validation back()
+        session()->put("event_{$event->id}_tickets", $tickets);
+        session()->put("event_{$event->id}_addons", $addons);
+
+        // Siapkan flat array slot peserta untuk looping form di blade
+        $participantSlots = [];
+        $slotIndex = 0;
+        foreach ($selectedTickets as $catId => $item) {
+            for ($i = 0; $i < $item['qty']; $i++) {
+                $participantSlots[] = [
+                    'index' => $slotIndex++,
+                    'category' => $item['category'],
+                    'itemNumber' => $i + 1,
+                    'totalOfCategory' => $item['qty'],
+                ];
+            }
+        }
 
         $paymentChannels = $this->tripayService->getPaymentChannels();
 
-        return view('public.register', compact('event', 'paymentChannels'));
+        return view('public.participants', compact(
+            'event',
+            'selectedTickets',
+            'participantSlots',
+            'totalCount',
+            'totalPrice',
+            'selectedAddons',
+            'totalAddonsCount',
+            'totalAddonsPrice',
+            'paymentChannels'
+        ));
     }
 
     /**
@@ -47,6 +184,7 @@ class PublicRegistrationController extends Controller
     {
         $event = Event::where('slug', $slug)->firstOrFail();
 
+        // Cek apakah payload bertipe multi-peserta (array `participants`) atau single-peserta
         // Cek apakah payload bertipe multi-peserta (array `participants`) atau single-peserta
         if ($request->has('participants') && is_array($request->input('participants'))) {
             $request->validate([
@@ -58,20 +196,11 @@ class PublicRegistrationController extends Controller
                 'participants' => 'required|array|min:1|max:10',
                 'participants.*.category_id' => 'required|exists:event_categories,id',
                 'participants.*.jersey_size_id' => 'required|exists:jersey_sizes,id',
-                'participants.*.full_name' => 'required|string|max:100',
-                'participants.*.bib_name' => 'nullable|string|max:30',
-                'participants.*.id_type' => 'required|in:KTP,SIM,Passport,KIA',
-                'participants.*.id_number' => 'required|string|max:30',
+                'participants.*.bib_name' => 'required|string|max:40',
                 'participants.*.gender' => 'required|in:male,female',
-                'participants.*.birth_date' => 'required|date',
-                'participants.*.blood_type' => 'required|string',
-                'participants.*.phone' => 'required|string|max:20',
-                'participants.*.email' => 'required|email|max:100',
-                'participants.*.emergency_contact_name' => 'required|string|max:100',
-                'participants.*.emergency_contact_phone' => 'required|string|max:20',
-                'participants.*.emergency_contact_relation' => 'required|string|max:50',
-                'participants.*.medical_conditions' => 'nullable|string',
-                'participants.*.estimated_finish_time' => 'nullable|string|max:50',
+                'participants.*.birth_date' => 'nullable|date',
+                'participants.*.phone' => 'nullable|string|max:20',
+                'participants.*.email' => 'nullable|email|max:100',
                 'participants.*.custom_fields' => 'nullable|array',
             ]);
 
@@ -84,53 +213,37 @@ class PublicRegistrationController extends Controller
             $request->validate([
                 'category_id' => 'required|exists:event_categories,id',
                 'jersey_size_id' => 'required|exists:jersey_sizes,id',
-                'full_name' => 'required|string|max:100',
-                'bib_name' => 'nullable|string|max:30',
-                'id_type' => 'required|in:KTP,SIM,Passport,KIA',
-                'id_number' => 'required|string|max:30',
                 'gender' => 'required|in:male,female',
-                'birth_date' => 'required|date',
-                'blood_type' => 'required|string',
-                'phone' => 'required|string|max:20',
-                'email' => 'required|email|max:100',
-                'emergency_contact_name' => 'required|string|max:100',
-                'emergency_contact_phone' => 'required|string|max:20',
-                'emergency_contact_relation' => 'required|string|max:50',
+                'full_name' => 'nullable|string|max:100',
+                'birth_date' => 'nullable|date',
+                'phone' => 'nullable|string|max:20',
+                'email' => 'nullable|email|max:100',
                 'payment_method' => 'required|string',
                 'waiver_accepted' => 'accepted',
-                'medical_conditions' => 'nullable|string',
-                'estimated_finish_time' => 'nullable|string|max:50',
                 'custom_fields' => 'nullable|array',
             ]);
 
-            $buyerName = $request->input('full_name');
-            $buyerEmail = $request->input('email');
-            $buyerPhone = $request->input('phone');
+            $buyerName = $request->input('full_name') ?: ($request->input('bib_name') ?: 'Buyer');
+            $buyerEmail = $request->input('email') ?: 'buyer@example.com';
+            $buyerPhone = $request->input('phone') ?: '08120000000';
             $participantsData = [
                 [
                     'category_id' => $request->input('category_id'),
                     'jersey_size_id' => $request->input('jersey_size_id'),
-                    'full_name' => $request->input('full_name'),
-                    'bib_name' => $request->input('bib_name'),
-                    'id_type' => $request->input('id_type'),
-                    'id_number' => $request->input('id_number'),
+                    'full_name' => $request->input('full_name') ?: $request->input('bib_name'),
                     'gender' => $request->input('gender'),
                     'birth_date' => $request->input('birth_date'),
-                    'blood_type' => $request->input('blood_type'),
-                    'phone' => $request->input('phone'),
-                    'email' => $request->input('email'),
-                    'emergency_contact_name' => $request->input('emergency_contact_name'),
-                    'emergency_contact_phone' => $request->input('emergency_contact_phone'),
-                    'emergency_contact_relation' => $request->input('emergency_contact_relation'),
-                    'medical_conditions' => $request->input('medical_conditions'),
-                    'estimated_finish_time' => $request->input('estimated_finish_time'),
+                    'phone' => $request->input('phone') ?: $buyerPhone,
+                    'email' => $request->input('email') ?: $buyerEmail,
                     'custom_fields' => $request->input('custom_fields'),
                 ],
             ];
         }
 
+        $addons = $request->input('addons', session()->get("event_{$event->id}_addons", []));
+
         try {
-            $order = DB::transaction(function () use ($request, $event, $buyerName, $buyerEmail, $buyerPhone, $participantsData) {
+            $order = DB::transaction(function () use ($request, $event, $buyerName, $buyerEmail, $buyerPhone, $participantsData, $addons) {
                 // 1. Kunci dan validasi kuota per kategori lari
                 $categoryCounts = [];
                 foreach ($participantsData as $p) {
@@ -178,8 +291,63 @@ class PublicRegistrationController extends Controller
                     $jersey->increment('allocated_stock', $qtyNeeded);
                 }
 
+                // 3. Kunci dan validasi add-on merchandise yang dipilih
+                $addonRecords = [];
+                $totalAddonsPrice = 0;
+                $totalAddonsWeightGrams = 0;
+
+                if (is_array($addons)) {
+                    foreach ($addons as $addonId => $qty) {
+                        $qty = (int) $qty;
+                        if ($qty > 0) {
+                            $addonModel = EventAddon::where('id', (int) $addonId)
+                                ->where('event_id', $event->id)
+                                ->where('is_active', true)
+                                ->lockForUpdate()
+                                ->first();
+
+                            if ($addonModel) {
+                                if (! $addonModel->isUnlimited() && ($addonModel->allocated_stock + $qty) > $addonModel->stock) {
+                                    $available = max(0, $addonModel->stock - $addonModel->allocated_stock);
+                                    throw new Exception("Mohon maaf, sisa stok add-on {$addonModel->name} tersisa {$available} pcs (Anda memilih {$qty} pcs).");
+                                }
+
+                                $addonModel->increment('allocated_stock', $qty);
+                                $subtotalAddon = (float) $addonModel->price * $qty;
+                                $totalAddonsPrice += $subtotalAddon;
+                                $totalAddonsWeightGrams += ($addonModel->weight_grams * $qty);
+
+                                $addonRecords[] = [
+                                    'event_addon_id' => $addonModel->id,
+                                    'addon_name' => $addonModel->name,
+                                    'quantity' => $qty,
+                                    'unit_price' => $addonModel->price,
+                                    'total_price' => $subtotalAddon,
+                                ];
+                            }
+                        }
+                    }
+                }
+
+                // 4. Hitung ongkos kirim SPX jika data alamat disediakan (termasuk bobot add-on)
+                $destinationCity = $request->input('destination_city');
+                $destinationDistrict = $request->input('destination_district');
+                $shippingCost = 0;
+                $shippingCalculation = null;
+                $totalWeightGrams = (count($participantsData) * 500) + $totalAddonsWeightGrams;
+
+                if (! empty($destinationCity) && ! empty($destinationDistrict)) {
+                    $shippingCalculation = $this->shippingService->calculateShipping(
+                        $destinationCity,
+                        $destinationDistrict,
+                        $totalWeightGrams
+                    );
+                    $shippingCost = $shippingCalculation['shipping_cost'];
+                }
+
                 $platformFee = 5000;
-                $grandTotal = $totalTicketsPrice + $platformFee;
+                $subtotal = $totalTicketsPrice + $totalAddonsPrice;
+                $grandTotal = $subtotal + $platformFee + $shippingCost;
                 $orderCode = 'JLTX-'.date('Ymd').'-'.strtoupper(Str::random(5));
 
                 $order = Order::create([
@@ -188,13 +356,39 @@ class PublicRegistrationController extends Controller
                     'customer_name' => $buyerName,
                     'customer_email' => $buyerEmail,
                     'customer_phone' => $buyerPhone,
-                    'subtotal' => $totalTicketsPrice,
+                    'subtotal' => $subtotal,
+                    'addons_total' => $totalAddonsPrice,
+                    'shipping_cost' => $shippingCost,
                     'platform_fee' => $platformFee,
                     'grand_total' => $grandTotal,
                     'status' => 'pending',
+                    'ip_address' => $request->ip(),
+                    'user_agent' => $request->userAgent(),
+                    'fbp' => $request->cookie('_fbp') ?: $request->input('_fbp'),
+                    'fbc' => $request->cookie('_fbc') ?: $request->input('_fbc'),
                 ]);
 
-                // 3. Buat OrderItem per kategori
+                // Simpan data alamat pengiriman jika kalkulasi SPX berhasil
+                if ($shippingCalculation) {
+                    OrderShippingAddress::create([
+                        'order_id' => $order->id,
+                        'recipient_name' => $request->input('recipient_name') ?: $buyerName,
+                        'recipient_phone' => $request->input('recipient_phone') ?: $buyerPhone,
+                        'province' => $request->input('province'),
+                        'destination_city' => $shippingCalculation['destination_city'],
+                        'destination_district' => $shippingCalculation['destination_district'],
+                        'postal_code' => $request->input('postal_code'),
+                        'address_detail' => $request->input('address_detail') ?: '-',
+                        'total_weight_grams' => $totalWeightGrams,
+                        'courier_name' => 'SPX',
+                        'service_type' => 'Regular',
+                        'shipping_cost' => $shippingCost,
+                        'estimated_sla_days' => $shippingCalculation['sla_days'],
+                        'shipping_status' => 'pending',
+                    ]);
+                }
+
+                // 5. Buat OrderItem per kategori tiket
                 foreach ($categoryCounts as $catId => $qty) {
                     $cat = $categoryModels[$catId];
                     $price = $cat->getCurrentPrice();
@@ -207,9 +401,22 @@ class PublicRegistrationController extends Controller
                     ]);
                 }
 
-                // 4. Buat data Participant per pelari
+                // 6. Buat OrderAddon per item merchandise / add-on
+                foreach ($addonRecords as $addonRec) {
+                    OrderAddon::create([
+                        'order_id' => $order->id,
+                        'event_addon_id' => $addonRec['event_addon_id'],
+                        'addon_name' => $addonRec['addon_name'],
+                        'quantity' => $addonRec['quantity'],
+                        'unit_price' => $addonRec['unit_price'],
+                        'total_price' => $addonRec['total_price'],
+                    ]);
+                }
+
+                // 7. Buat data Participant per pelari
                 foreach ($participantsData as $pData) {
-                    $rawBib = ! empty($pData['bib_name']) ? trim($pData['bib_name']) : trim($pData['full_name']);
+                    $rawBib = ! empty($pData['bib_name']) ? trim($pData['bib_name']) : (! empty($pData['full_name']) ? trim($pData['full_name']) : 'RUNNER');
+                    $fullName = ! empty($pData['full_name']) ? trim($pData['full_name']) : $rawBib;
                     $safeBibName = mb_substr(strtoupper($rawBib), 0, 40);
                     $safeFinishTime = ! empty($pData['estimated_finish_time']) ? mb_substr(trim($pData['estimated_finish_time']), 0, 45) : null;
 
@@ -217,26 +424,21 @@ class PublicRegistrationController extends Controller
                         'order_id' => $order->id,
                         'event_category_id' => (int) $pData['category_id'],
                         'jersey_size_id' => (int) $pData['jersey_size_id'],
-                        'full_name' => $pData['full_name'],
+                        'full_name' => $fullName,
                         'bib_name' => $safeBibName,
-                        'id_type' => $pData['id_type'],
-                        'id_number' => $pData['id_number'],
                         'gender' => $pData['gender'],
-                        'birth_date' => $pData['birth_date'],
-                        'blood_type' => $pData['blood_type'],
-                        'phone' => $pData['phone'],
-                        'email' => $pData['email'],
-                        'emergency_contact_name' => $pData['emergency_contact_name'],
-                        'emergency_contact_phone' => $pData['emergency_contact_phone'],
-                        'emergency_contact_relation' => $pData['emergency_contact_relation'],
-                        'medical_conditions' => $pData['medical_conditions'] ?? null,
-                        'estimated_finish_time' => $safeFinishTime,
+                        'birth_date' => $pData['birth_date'] ?? null,
+                        'phone' => $pData['phone'] ?? $buyerPhone,
+                        'email' => $pData['email'] ?? $buyerEmail,
                         'custom_fields_data' => $pData['custom_fields'] ?? null,
                         'waiver_accepted' => true,
                         'waiver_accepted_at' => now(),
                         'waiver_ip_address' => $request->ip(),
                     ]);
                 }
+
+                // Hapus data session pemesanan setelah sukses
+                session()->forget(["event_{$event->id}_tickets", "event_{$event->id}_addons"]);
 
                 return $order;
             });
@@ -264,7 +466,7 @@ class PublicRegistrationController extends Controller
     public function showInvoice(string $orderCode)
     {
         $order = Order::where('order_code', $orderCode)
-            ->with(['event', 'items.category', 'participants.category', 'participants.jerseySize'])
+            ->with(['event', 'items.category', 'addons', 'participants.category', 'participants.jerseySize', 'shippingAddress'])
             ->firstOrFail();
 
         return view('public.invoice', compact('order'));
@@ -308,6 +510,9 @@ class PublicRegistrationController extends Controller
 
             // Kirim email tiket seketika setelah pembayaran berhasil
             SendTicketEmailJob::dispatchAfterResponse($order);
+
+            // Kirim event Purchase ke Meta Conversions API (CAPI)
+            SendMetaCapiPurchaseJob::dispatchAfterResponse($order);
         }
 
         return redirect()->route('public.order.show', $orderCode)->with('success', 'Pembayaran Sandbox Berhasil Dikonfirmasi!');

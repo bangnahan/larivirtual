@@ -22,8 +22,9 @@ class DatabaseSeeder extends Seeder
         $superadmin = User::firstOrCreate([
             'email' => 'admin@jelatix.id',
         ], [
-            'name' => 'Superadmin Jelatix',
-            'password' => Hash::make('password'),
+            'name' => 'bangnahan',
+            'username' => 'bangnahan',
+            'password' => Hash::make('@Pekanbaru12'),
             'role' => 'superadmin',
             'phone' => '081234567890',
             'is_active' => true,
@@ -84,6 +85,9 @@ class DatabaseSeeder extends Seeder
             'registration_close_date' => now()->addDays(30),
             'rpc_start_date' => now()->addDays(42),
             'rpc_end_date' => now()->addDays(44),
+            'racepack_delivery_start_date' => now()->addDays(35),
+            'racepack_delivery_end_date' => now()->addDays(40),
+            'racepack_delivery_schedule' => 'Serentak via SPX Express',
             'rpc_location' => 'Mall FX Sudirman Lt. 3, Jakarta',
             'waiver_content' => 'Dengan ini saya menyatakan sehat jasmani dan rohani serta menyetujui seluruh syarat & ketentuan lomba.',
             'auto_assign_bib' => true,
@@ -101,7 +105,7 @@ class DatabaseSeeder extends Seeder
             'early_bird_end_date' => now()->addDays(10),
             'quota' => 500,
             'slots_taken' => 2,
-            'bib_prefix' => '5K',
+            'bib_prefix' => null,
             'bib_start_number' => 1001,
             'reserved_bib_numbers' => [1001, 1002, 1003, 8888], // Reservasi VVIP
             'cut_off_time_minutes' => 60,
@@ -118,9 +122,9 @@ class DatabaseSeeder extends Seeder
             'early_bird_end_date' => now()->addDays(10),
             'quota' => 300,
             'slots_taken' => 1,
-            'bib_prefix' => '10K',
-            'bib_start_number' => 10001,
-            'reserved_bib_numbers' => [10001, 10002, 99999],
+            'bib_prefix' => null,
+            'bib_start_number' => 2001,
+            'reserved_bib_numbers' => [2001, 2002, 99999],
             'cut_off_time_minutes' => 120,
             'min_age' => 15,
         ]);
@@ -202,63 +206,34 @@ class DatabaseSeeder extends Seeder
         ], [
             'event_category_id' => $cat5k->id,
             'jersey_size_id' => $sizeModels['L']->id,
-            'bib_number' => '5K1004', // Auto-assigned melewati 1001-1003
+            'bib_number' => '5K1004',
             'bib_name' => 'ANDI P',
-            'id_type' => 'KTP',
-            'id_number' => '3171012345670001',
             'gender' => 'male',
             'birth_date' => '1995-05-14',
-            'blood_type' => 'O+',
             'phone' => '081234567001',
             'email' => 'andi.pratama@gmail.com',
-            'emergency_contact_name' => 'Dewi Lestari',
-            'emergency_contact_phone' => '081234567999',
-            'emergency_contact_relation' => 'Istri',
-            'medical_conditions' => 'Tidak ada',
-            'wave_group' => 'Wave A',
-            'custom_fields_data' => [
-                'shuttle_bus_point' => 'Stasiun MRT Bundaran HI',
-                'running_club' => 'Indorunners Jakarta',
-            ],
             'waiver_accepted' => true,
             'waiver_accepted_at' => now()->subHours(2),
             'waiver_ip_address' => '127.0.0.1',
             'qr_token' => 'qr_demo_token_andi_pratama_01',
-            'is_rpc_claimed' => false,
         ]);
 
-        // 9. Sample VVIP Runner (Nomor Cantik Khusus: 5K0001)
+        // 9. Sample Runner
         Participant::firstOrCreate([
             'full_name' => 'Bambang Pamungkas',
             'event_category_id' => $cat5k->id,
         ], [
             'jersey_size_id' => $sizeModels['M']->id,
-            'bib_number' => '5K0001',
-            'is_vip' => true,
-            'is_custom_bib' => true,
-            'custom_bib_reason' => 'Tamu Kehormatan / Atlet Nasional',
+            'bib_number' => '5K1005',
             'bib_name' => 'BEPE 20',
-            'id_type' => 'KTP',
-            'id_number' => '3171029988770002',
             'gender' => 'male',
             'birth_date' => '1980-06-10',
-            'blood_type' => 'A+',
             'phone' => '081199998888',
             'email' => 'bepe@legend.id',
-            'emergency_contact_name' => 'Tribuana Tungga Dewi',
-            'emergency_contact_phone' => '081199998889',
-            'emergency_contact_relation' => 'Istri',
-            'medical_conditions' => 'Kondisi fisik prima',
-            'wave_group' => 'Wave VIP',
-            'custom_fields_data' => [
-                'shuttle_bus_point' => 'Tidak Menggunakan Shuttle',
-                'running_club' => 'VIP Ambassador',
-            ],
             'waiver_accepted' => true,
             'waiver_accepted_at' => now(),
             'waiver_ip_address' => '127.0.0.1',
             'qr_token' => 'qr_demo_token_bepe_vvip_99',
-            'is_rpc_claimed' => false,
         ]);
     }
 }

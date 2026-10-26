@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Jobs\SendMetaCapiPurchaseJob;
 use App\Jobs\SendTicketEmailJob;
 use App\Models\Order;
 use App\Models\PaymentLog;
@@ -106,6 +107,9 @@ class TripayWebhookController extends Controller
 
                     // Dispatch Job pengiriman email E-Ticket via Mailketing
                     SendTicketEmailJob::dispatchAfterResponse($order);
+
+                    // Dispatch Job kirim event Purchase ke Meta Conversions API (CAPI)
+                    SendMetaCapiPurchaseJob::dispatchAfterResponse($order);
                 } elseif (in_array($tripayStatus, ['EXPIRED', 'FAILED'])) {
                     if ($order->status === 'pending') {
                         $order->update(['status' => strtolower($tripayStatus)]);

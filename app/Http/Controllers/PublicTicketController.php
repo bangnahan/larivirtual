@@ -24,11 +24,12 @@ class PublicTicketController extends Controller
 
         $search = trim($request->input('query'));
 
-        // Cari berdasarkan kode order, NIK, atau email
+        // Cari berdasarkan kode order, email, nomor WhatsApp/telepon, atau nomor BIB
         $participants = Participant::with(['order', 'category.event', 'jerseySize'])
             ->where(function ($q) use ($search) {
-                $q->where('id_number', $search)
-                    ->orWhere('email', $search)
+                $q->where('email', $search)
+                    ->orWhere('phone', $search)
+                    ->orWhere('bib_number', $search)
                     ->orWhereHas('order', function ($orderQuery) use ($search) {
                         $orderQuery->where('order_code', $search);
                     });

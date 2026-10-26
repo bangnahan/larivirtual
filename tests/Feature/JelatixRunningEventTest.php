@@ -2,7 +2,6 @@
 
 namespace Tests\Feature;
 
-use App\Filament\Organizer\Pages\RpcScanner;
 use App\Filament\Organizer\Resources\EventResource\Pages\CreateEvent;
 use App\Filament\Organizer\Widgets\JerseyProductionRecapWidget;
 use App\Jobs\SendPaymentPendingEmailJob;
@@ -16,7 +15,6 @@ use App\Models\Participant;
 use App\Models\User;
 use App\Services\BibGeneratorService;
 use App\Services\MailketingService;
-use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
@@ -91,7 +89,7 @@ class JelatixRunningEventTest extends TestCase
         $this->assertEquals('10K1003', $bib);
     }
 
-    public function test_custom_vvip_bib_is_protected_from_bulk_remapping(): void
+    public function test_bulk_remapping_assigns_sequential_bibs_and_skips_reserved(): void
     {
         $bibService = new BibGeneratorService;
 
@@ -105,23 +103,15 @@ class JelatixRunningEventTest extends TestCase
             'status' => 'paid',
         ]);
 
-        // 1. Peserta VVIP dengan nomor khusus
-        $vvip = Participant::create([
+        // 1. Peserta Pertama
+        $first = Participant::create([
             'order_id' => $order->id,
             'event_category_id' => $this->category->id,
-            'full_name' => 'Pejabat VVIP',
-            'id_number' => '317100099',
+            'full_name' => 'Peserta Awal',
             'gender' => 'male',
             'birth_date' => '1975-01-01',
             'phone' => '0811999999',
             'email' => 'vvip@gov.id',
-            'emergency_contact_name' => 'Ajudan',
-            'emergency_contact_phone' => '0811888888',
-            'emergency_contact_relation' => 'Staf',
-            'bib_number' => 'VIP-01',
-            'is_vip' => true,
-            'is_custom_bib' => true,
-            'custom_bib_reason' => 'Tamu Kehormatan',
         ]);
 
         // 2. Peserta Reguler
@@ -129,24 +119,17 @@ class JelatixRunningEventTest extends TestCase
             'order_id' => $order->id,
             'event_category_id' => $this->category->id,
             'full_name' => 'Pelari Biasa',
-            'id_number' => '317100001',
             'gender' => 'male',
             'birth_date' => '1990-01-01',
             'phone' => '0812345678',
             'email' => 'runner@test.com',
-            'emergency_contact_name' => 'Kontak',
-            'emergency_contact_phone' => '0812345679',
-            'emergency_contact_relation' => 'Saudara',
-            'estimated_finish_time' => '00:45:00',
         ]);
 
-        // Jalankan Bulk Remap
+        // Jalankan Bulk Remap (1001 & 1002 diskip karena reserved)
         $bibService->bulkRemapBibs($this->category);
 
-        // VVIP BIB harus tetap 'VIP-01'
-        $this->assertEquals('VIP-01', $vvip->fresh()->bib_number);
-        // Peserta reguler mendapatkan nomor terurut (melewati reserved 1001, 1002 -> 10K1003)
-        $this->assertEquals('10K1003', $regular->fresh()->bib_number);
+        $this->assertEquals('10K1003', $first->fresh()->bib_number);
+        $this->assertEquals('10K1004', $regular->fresh()->bib_number);
     }
 
     public function test_public_check_ticket_and_pdf_download(): void
@@ -165,20 +148,16 @@ class JelatixRunningEventTest extends TestCase
             'order_id' => $order->id,
             'event_category_id' => $this->category->id,
             'full_name' => 'Budi Santoso',
-            'id_number' => '3578012345670001',
             'gender' => 'male',
             'birth_date' => '1992-03-15',
             'phone' => '0812345678',
             'email' => 'budi@test.com',
-            'emergency_contact_name' => 'Siti',
-            'emergency_contact_phone' => '0812345679',
-            'emergency_contact_relation' => 'Istri',
             'bib_number' => '10K1005',
         ]);
 
-        // Cari via NIK di form pencarian publik
+        // Cari via Email di form pencarian publik
         $searchResponse = $this->post('/cek-tiket', [
-            'query' => '3578012345670001',
+            'query' => 'budi@test.com',
         ]);
 
         $searchResponse->assertStatus(200);
@@ -226,92 +205,11 @@ class JelatixRunningEventTest extends TestCase
         $this->assertEquals(4, $this->category->fresh()->slots_taken);
     }
 
-    public function test_crew_can_verify_qr_and_claim_rpc(): void
+    public function test_scanner_rpc_system_is_completely_removed(): void
     {
-        $order = Order::create([
-            'event_id' => $this->event->id,
-            'order_code' => 'JLTX-RPC-001',
-            'customer_name' => 'Peserta RPC',
-            'customer_email' => 'rpc@test.com',
-            'customer_phone' => '0812345678',
-            'grand_total' => 250000,
-            'status' => 'paid',
-        ]);
-
-        $participant = Participant::create([
-            'order_id' => $order->id,
-            'event_category_id' => $this->category->id,
-            'full_name' => 'Peserta RPC',
-            'id_number' => '3578099999990001',
-            'gender' => 'male',
-            'birth_date' => '1990-01-01',
-            'phone' => '0812345678',
-            'email' => 'rpc@test.com',
-            'emergency_contact_name' => 'Kontak',
-            'emergency_contact_phone' => '0812345679',
-            'emergency_contact_relation' => 'Keluarga',
-            'bib_number' => '10K1099',
-            'is_rpc_claimed' => false,
-        ]);
-
-        // 1. Verifikasi QR
-        $verifyRes = $this->postJson('/crew/verify', ['token' => $participant->qr_token]);
-        $verifyRes->assertStatus(200);
-        $verifyRes->assertJsonPath('participant.bib_number', '10K1099');
-        $verifyRes->assertJsonPath('participant.is_rpc_claimed', false);
-
-        // 2. Serahkan Race Pack (Claim)
-        $claimRes = $this->postJson('/crew/claim', ['participant_id' => $participant->id]);
-        $claimRes->assertStatus(200);
-        $this->assertTrue($participant->fresh()->is_rpc_claimed);
-
-        // 3. Coba klaim kedua kali (harus ditolak)
-        $doubleClaimRes = $this->postJson('/crew/claim', ['participant_id' => $participant->id]);
-        $doubleClaimRes->assertStatus(422);
-    }
-
-    public function test_proxy_collection_records_proxy_collector_nik(): void
-    {
-        $order = Order::create([
-            'event_id' => $this->event->id,
-            'order_code' => 'JLTX-PROXY-001',
-            'customer_name' => 'Peserta Diwakilkan',
-            'customer_email' => 'proxy@test.com',
-            'customer_phone' => '0812345678',
-            'grand_total' => 250000,
-            'status' => 'paid',
-        ]);
-
-        $participant = Participant::create([
-            'order_id' => $order->id,
-            'event_category_id' => $this->category->id,
-            'full_name' => 'Peserta Diwakilkan',
-            'id_number' => '3578011111110001',
-            'gender' => 'female',
-            'birth_date' => '1992-01-01',
-            'phone' => '0812345678',
-            'email' => 'proxy@test.com',
-            'emergency_contact_name' => 'Kontak',
-            'emergency_contact_phone' => '0812345679',
-            'emergency_contact_relation' => 'Keluarga',
-            'bib_number' => '10K1088',
-        ]);
-
-        // Klaim dengan Surat Kuasa
-        $claimRes = $this->postJson('/crew/claim', [
-            'participant_id' => $participant->id,
-            'is_proxy' => true,
-            'proxy_name' => 'Kawan Satu Komunitas',
-            'proxy_nik' => '3578022222220002',
-        ]);
-
-        $claimRes->assertStatus(200);
-
-        $fresh = $participant->fresh();
-        $this->assertTrue($fresh->is_rpc_claimed);
-        $this->assertTrue($fresh->is_proxy_claimed);
-        $this->assertEquals('Kawan Satu Komunitas', $fresh->proxy_collector_name);
-        $this->assertEquals('3578022222220002', $fresh->proxy_collector_id_number);
+        $this->get('/crew')->assertNotFound();
+        $this->postJson('/crew/verify', ['token' => 'dummy'])->assertNotFound();
+        $this->postJson('/crew/claim', ['participant_id' => 1])->assertNotFound();
     }
 
     public function test_public_runner_can_register_and_checkout_to_tripay(): void
@@ -333,7 +231,6 @@ class JelatixRunningEventTest extends TestCase
             'id_number' => '3271012345670001',
             'gender' => 'male',
             'birth_date' => '1994-08-17',
-            'blood_type' => 'B+',
             'phone' => '081288887777',
             'email' => 'fajar@running.id',
             'emergency_contact_name' => 'Ratna',
@@ -414,7 +311,6 @@ class JelatixRunningEventTest extends TestCase
                     'id_number' => '3271011111110001',
                     'gender' => 'male',
                     'birth_date' => '1992-05-10',
-                    'blood_type' => 'O+',
                     'phone' => '081299990000',
                     'email' => 'budi@runnerclub.id',
                     'emergency_contact_name' => 'Siti',
@@ -430,7 +326,6 @@ class JelatixRunningEventTest extends TestCase
                     'id_number' => '3271012222220002',
                     'gender' => 'male',
                     'birth_date' => '1995-09-20',
-                    'blood_type' => 'A+',
                     'phone' => '081299990002',
                     'email' => 'andi@runnerclub.id',
                     'emergency_contact_name' => 'Siti',
@@ -692,7 +587,6 @@ class JelatixRunningEventTest extends TestCase
             'id_number' => '3201010101010001',
             'gender' => 'male',
             'birth_date' => '1995-05-05',
-            'blood_type' => 'O+',
             'phone' => '081234567890',
             'email' => 'budi@santoso.id',
             'emergency_contact_name' => 'Siti',
@@ -742,12 +636,12 @@ class JelatixRunningEventTest extends TestCase
 
         $this->actingAs($superadmin);
 
-        // 1. Admin can access Organizers list and create page
+        // 1. Admin no longer has multi-tenant Organizers panel (removed for internal system)
         $resOrganizers = $this->get('/admin/organizers');
-        $resOrganizers->assertStatus(200);
+        $resOrganizers->assertStatus(404);
 
         $resCreateOrganizer = $this->get('/admin/organizers/create');
-        $resCreateOrganizer->assertStatus(200);
+        $resCreateOrganizer->assertStatus(404);
 
         // 2. Admin can create Organizer model
         $newOrg = Organizer::create([
@@ -764,12 +658,12 @@ class JelatixRunningEventTest extends TestCase
         ]);
         $this->assertDatabaseHas('organizers', ['slug' => 'jakarta-running-community']);
 
-        // 3. Admin can access Organizer Payouts list and create page
+        // 3. Admin no longer has Organizer Payouts panel (removed for internal system)
         $resPayouts = $this->get('/admin/organizer-payouts');
-        $resPayouts->assertStatus(200);
+        $resPayouts->assertStatus(404);
 
         $resCreatePayout = $this->get('/admin/organizer-payouts/create');
-        $resCreatePayout->assertStatus(200);
+        $resCreatePayout->assertStatus(404);
 
         // 4. Admin can create OrganizerPayout
         $payout = OrganizerPayout::create([
@@ -821,84 +715,13 @@ class JelatixRunningEventTest extends TestCase
         $this->assertStringContainsString('https://app.jelatix.com/organizer', $emailHtml);
     }
 
-    public function test_scanner_is_not_displayed_on_homepage_and_crew_redirects_to_eo_panel(): void
+    public function test_scanner_is_not_displayed_on_homepage(): void
     {
-        // 1. Cek halaman depan tidak lagi menampilkan Scanner RPC
         $homeRes = $this->get('/');
         $homeRes->assertStatus(200);
         $homeRes->assertDontSee('Scanner RPC');
         $homeRes->assertDontSee('Scanner Kru');
         $homeRes->assertDontSee('href="/crew"', false);
-
-        // 2. Akses /crew dialihkan ke panel EO
-        $crewRes = $this->get('/crew');
-        $crewRes->assertRedirect('/organizer/rpc-scanner');
-    }
-
-    public function test_organizer_and_crew_can_access_rpc_scanner_in_eo_panel(): void
-    {
-        $eoUser = User::create([
-            'organizer_id' => $this->organizer->id,
-            'name' => 'EO Director Test',
-            'email' => 'director@testeo.com',
-            'password' => bcrypt('password'),
-            'role' => 'organizer_owner',
-            'is_active' => true,
-        ]);
-
-        $crewUser = User::create([
-            'organizer_id' => $this->organizer->id,
-            'name' => 'Crew Scanner Test',
-            'email' => 'crew@testeo.com',
-            'password' => bcrypt('password'),
-            'role' => 'scanner_crew',
-            'is_active' => true,
-        ]);
-
-        $panel = Filament::getPanel('organizer');
-
-        // EO and Crew are allowed to access organizer panel
-        $this->assertTrue($eoUser->canAccessPanel($panel));
-        $this->assertTrue($crewUser->canAccessPanel($panel));
-
-        // Test EO Livewire RPC Scanner Page
-        $order = Order::create([
-            'event_id' => $this->event->id,
-            'order_code' => 'JLTX-RPC-TEST-1',
-            'customer_name' => 'Pelari Test RPC',
-            'customer_email' => 'pelari.rpc@test.com',
-            'customer_phone' => '081299998888',
-            'grand_total' => 250000,
-            'status' => 'paid',
-        ]);
-
-        $participant = Participant::create([
-            'order_id' => $order->id,
-            'event_category_id' => $this->category->id,
-            'full_name' => 'Pelari Test RPC',
-            'id_number' => '3171012345678901',
-            'gender' => 'male',
-            'birth_date' => '1995-05-15',
-            'phone' => '081299998888',
-            'email' => 'pelari.rpc@test.com',
-            'emergency_contact_name' => 'Ibu',
-            'emergency_contact_phone' => '081299990000',
-            'emergency_contact_relation' => 'Orang Tua',
-            'bib_number' => '10K2026',
-            'is_rpc_claimed' => false,
-        ]);
-
-        Livewire::actingAs($crewUser)
-            ->test(RpcScanner::class)
-            ->assertSuccessful()
-            ->call('verifyToken', '10K2026')
-            ->assertSet('participantData.bib_number', '10K2026')
-            ->assertSet('participantData.is_rpc_claimed', false)
-            ->call('claimRacePack')
-            ->assertSet('participantData.is_rpc_claimed', true);
-
-        $this->assertTrue($participant->fresh()->is_rpc_claimed);
-        $this->assertEquals($crewUser->id, $participant->fresh()->rpc_claimed_by_user_id);
     }
 
     public function test_event_creation_with_categories_saves_properly(): void

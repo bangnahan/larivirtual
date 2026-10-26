@@ -21,15 +21,23 @@
         // Teks ringkasan untuk WhatsApp Vendor
         $waLines = [];
         $waLines[] = "*REKAP KEBUTUHAN PRODUKSI JERSEY*";
-        $waLines[] = "Event: " . ($event ? $event->title : 'Jelatix Event');
+        $waLines[] = "Event: " . ($event ? $event->title : 'Virun Virtual Run');
         $waLines[] = "Tanggal Update: " . now()->format('d M Y, H:i') . " WIB";
         $waLines[] = "Status: Peserta Lunas (Siap Naik Jahit)\n";
         foreach ($sizes as $s) {
             $waLines[] = "• Ukuran {$s['size_name']} ({$s['gender_type']}): {$s['paid_qty']} pcs" . ($s['pending_qty'] > 0 ? " (est. pending: +{$s['pending_qty']})" : "");
         }
-        $waLines[] = "\n*TOTAL SIAP PRODUKSI: " . number_format($grandTotalPaid) . " pcs*";
+        $waLines[] = "\n*TOTAL SIAP PRODUKSI JERSEY: " . number_format($grandTotalPaid) . " pcs*";
         if ($grandTotalPending > 0) {
             $waLines[] = "_(Menunggu pembayaran: +" . number_format($grandTotalPending) . " pcs)_";
+        }
+
+        $addons = $recap['addons'] ?? [];
+        if (!empty($addons)) {
+            $waLines[] = "\n*REKAP KEBUTUHAN PRODUKSI ADD-ON & MERCHANDISE*";
+            foreach ($addons as $ad) {
+                $waLines[] = "• {$ad['name']}: {$ad['paid_qty']} pcs" . ($ad['pending_qty'] > 0 ? " (est. pending: +{$ad['pending_qty']})" : "");
+            }
         }
         $waText = implode("\n", $waLines);
     @endphp
@@ -322,6 +330,70 @@
                         </tr>
                     </tfoot>
                 </table>
+            </div>
+        @endif
+
+        <!-- Mode Add-on & Merchandise Recap Table -->
+        @if(!empty($addons))
+            <div class="mt-4 pt-4 border-t border-gray-100 dark:border-gray-800 space-y-3">
+                <div class="flex items-center justify-between">
+                    <h4 class="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                        <span class="p-1.5 rounded-lg bg-sky-500/10 text-sky-600 dark:text-sky-400">
+                            <x-heroicon-o-shopping-bag class="w-4 h-4" />
+                        </span>
+                        <span>Rekap Add-on & Merchandise Event (PO Vendor)</span>
+                        <span class="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-sky-500/15 text-sky-600 dark:text-sky-400 border border-sky-500/30">
+                            {{ count($addons) }} Produk
+                        </span>
+                    </h4>
+                </div>
+
+                <div class="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-800">
+                    <table class="w-full text-left text-xs">
+                        <thead class="bg-gray-50 dark:bg-gray-800/80 text-gray-600 dark:text-gray-300 font-bold uppercase tracking-wider border-b border-gray-200 dark:border-gray-800">
+                            <tr>
+                                <th class="py-3 px-4">Nama Merchandise / Add-on</th>
+                                <th class="py-3 px-3 text-center">Berat</th>
+                                <th class="py-3 px-3 text-right">Siap Produksi (Lunas)</th>
+                                <th class="py-3 px-3 text-right">Pending Bayar</th>
+                                <th class="py-3 px-3 text-right">Total Permintaan</th>
+                                <th class="py-3 px-4 text-center">Status Kuota</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100 dark:divide-gray-800 font-medium">
+                            @foreach($addons as $addon)
+                                <tr class="hover:bg-gray-50/60 dark:hover:bg-gray-800/40 transition">
+                                    <td class="py-3 px-4 font-bold text-gray-900 dark:text-white">
+                                        {{ $addon['name'] }}
+                                    </td>
+                                    <td class="py-3 px-3 text-center text-gray-500 dark:text-gray-400 font-mono text-[11px]">
+                                        {{ $addon['weight_grams'] }} gr
+                                    </td>
+                                    <td class="py-3 px-3 text-right font-black font-mono text-sm text-emerald-600 dark:text-emerald-400">
+                                        {{ number_format($addon['paid_qty']) }}
+                                    </td>
+                                    <td class="py-3 px-3 text-right font-mono text-gray-500 dark:text-gray-400">
+                                        {{ $addon['pending_qty'] > 0 ? '+'.number_format($addon['pending_qty']) : '-' }}
+                                    </td>
+                                    <td class="py-3 px-3 text-right font-black font-mono text-gray-900 dark:text-white">
+                                        {{ number_format($addon['total_qty']) }}
+                                    </td>
+                                    <td class="py-3 px-4 text-center">
+                                        @if($addon['is_unlimited'])
+                                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-sky-50 dark:bg-sky-950/60 text-sky-600 dark:text-sky-400 border border-sky-100 dark:border-sky-900">
+                                                Unlimited
+                                            </span>
+                                        @else
+                                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-900">
+                                                Batas: {{ $addon['stock'] }} (Sisa {{ $addon['available_stock'] }})
+                                            </span>
+                                        @endif
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
             </div>
         @endif
 

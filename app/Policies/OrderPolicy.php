@@ -12,7 +12,7 @@ class OrderPolicy
      */
     public function before(User $user, string $ability): ?bool
     {
-        if ($user->isSuperAdmin()) {
+        if ($user->isSuperAdmin() || $user->role === 'admin') {
             return true;
         }
 

@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Jelatix — Platform Tiketing Khusus Event Lari & Marathon</title>
+    <title>Virun — Platform Virtual Run &amp; Event Lari</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -20,189 +20,196 @@
             }
         }
     </script>
-    <style>
-        body {
-            background: linear-gradient(135deg, #090e1a 0%, #0f172a 50%, #1e1b4b 100%);
-            color: #f8fafc;
-            min-height: 100vh;
-        }
-    </style>
 </head>
-<body class="flex flex-col min-h-screen">
+<body class="bg-slate-50 text-slate-900 min-h-screen flex flex-col font-sans antialiased selection:bg-orange-100 selection:text-orange-900">
     <!-- Navbar -->
-    <header class="border-b border-white/10 backdrop-blur-xl sticky top-0 z-50 bg-slate-950/80">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 h-16 sm:h-18 flex items-center justify-between">
-            <div class="flex items-center gap-2 sm:gap-3 shrink-0">
-                <a href="/" class="flex items-center gap-1.5 sm:gap-2">
-                    <span class="text-xl sm:text-2xl font-black tracking-tight bg-gradient-to-r from-sky-400 via-teal-300 to-indigo-300 bg-clip-text text-transparent">
-                        JELATIX
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-xs">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+            <a href="/" class="flex items-center gap-2.5">
+                <div class="w-8 h-8 rounded-lg bg-orange-50 border border-orange-200 p-1 flex items-center justify-center">
+                    <span class="text-orange-600 font-black text-sm">VR</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="text-lg font-black tracking-tight text-slate-900">VIRUN</span>
+                    <span class="hidden sm:inline-block text-[10px] uppercase font-bold px-2 py-0.5 rounded-full bg-orange-50 text-orange-700 border border-orange-200">
+                        Virtual Run
                     </span>
-                    <span class="hidden xs:inline-block text-[9px] sm:text-[10px] tracking-wider uppercase px-2 py-0.5 rounded-full bg-sky-500/20 text-sky-300 font-bold border border-sky-400/30">
-                        Running Platform
-                    </span>
-                </a>
-            </div>
+                </div>
+            </a>
             
-            <nav class="flex items-center gap-2 sm:gap-5 text-xs sm:text-sm">
-                <a href="/cek-tiket" class="font-semibold text-slate-300 hover:text-white transition flex items-center gap-1 sm:gap-1.5 px-2 py-1.5 rounded-lg hover:bg-white/5">
-                    <svg class="w-4 h-4 text-sky-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"></path></svg>
-                    <span class="hidden sm:inline">Cek Tiket & E-BIB</span>
-                    <span class="sm:hidden">Tiket</span>
+            <nav class="flex items-center gap-2 sm:gap-3 text-xs sm:text-sm">
+                <a href="{{ route('public.submit.index') }}" class="font-bold text-orange-600 hover:text-orange-700 transition flex items-center gap-1.5 px-3 py-2 rounded-xl bg-orange-50 border border-orange-200/80 hover:bg-orange-100/70">
+                    <svg class="w-4 h-4 text-orange-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                    <span>Submit Lari</span>
                 </a>
-                <a href="/organizer" class="bg-white/10 hover:bg-white/20 border border-white/20 text-white font-semibold text-xs sm:text-sm px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-xl transition">
-                    <span class="hidden sm:inline">Portal EO</span>
-                    <span class="sm:hidden">EO</span>
+                <a href="{{ route('public.ticket.index') }}" class="font-semibold text-slate-600 hover:text-slate-900 transition flex items-center gap-1.5 px-3 py-2 rounded-xl hover:bg-slate-100">
+                    <svg class="w-4 h-4 text-slate-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"></path></svg>
+                    <span class="hidden sm:inline">Cek E-BIB</span>
+                    <span class="sm:hidden">Tiket</span>
                 </a>
             </nav>
         </div>
     </header>
 
-    <!-- Hero Section -->
+    <!-- Main Content -->
     <main class="flex-1">
-        <section class="max-w-7xl mx-auto px-4 sm:px-6 pt-8 sm:pt-12 pb-10 sm:pb-16 text-center">
-            <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-sky-500/10 border border-sky-400/20 text-sky-400 text-[11px] sm:text-xs font-semibold mb-6 max-w-full text-left sm:text-center">
-                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0"></span>
-                <span class="truncate sm:overflow-visible">Platform Tiketing & Registrasi Khusus Lomba Lari</span>
+        <!-- Hero Section -->
+        <section class="max-w-4xl mx-auto px-4 sm:px-6 pt-12 sm:pt-16 pb-10 sm:pb-14 text-center">
+            <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white border border-slate-200 text-slate-700 text-xs font-semibold mb-5 shadow-xs">
+                <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                <span>Platform Lari Virtual Tanpa Ribet</span>
             </div>
 
-            <h1 class="text-3xl sm:text-5xl lg:text-6xl font-black tracking-tight text-white mb-4 sm:mb-6 leading-tight max-w-4xl mx-auto">
-                Registrasi Lomba Lari Cepat, Terintegrasi, & Bebas Masalah.
+            <h1 class="text-3xl sm:text-5xl font-extrabold tracking-tight text-slate-900 mb-4 leading-tight">
+                Lari Di Mana Saja, Raih Medali &amp; E-Sertifikat.
             </h1>
 
-            <p class="text-sm sm:text-lg text-slate-400 max-w-2xl mx-auto mb-8 sm:mb-10 leading-relaxed px-2">
-                Kelola nomor BIB otomatis, kuota ukuran jersey, surat kuasa Race Pack Collection, dan pembayaran instan via Tripay dalam satu sistem terpadu.
+            <p class="text-sm sm:text-base text-slate-600 max-w-xl mx-auto mb-8 leading-relaxed">
+                Pilih event virtual favoritmu, dapatkan nomor E-BIB otomatis, submit hasil lari (Strava/Garmin/Treadmill), dan paket race pack dikirim langsung ke rumah via SPX Express.
             </p>
 
-            <div class="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 max-w-md sm:max-w-none mx-auto w-full">
-                <a href="#events" class="w-full sm:w-auto bg-gradient-to-r from-sky-500 to-indigo-600 hover:from-sky-400 hover:to-indigo-500 active:scale-95 text-slate-950 font-black px-6 sm:px-8 py-3.5 sm:py-4 rounded-xl text-sm transition shadow-xl shadow-sky-500/20 flex items-center justify-center gap-2">
-                    Jelajahi Event Lari Aktif
+            <div class="flex flex-col sm:flex-row items-center justify-center gap-3 w-full max-w-sm sm:max-w-2xl mx-auto">
+                <a href="#events" class="w-full sm:w-auto bg-orange-600 hover:bg-orange-500 active:scale-95 text-white font-bold px-6 py-3.5 rounded-xl text-sm transition shadow-md shadow-orange-600/20 flex items-center justify-center gap-2 whitespace-nowrap">
+                    <span>Lihat Event Lari</span>
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
                 </a>
-                <a href="/cek-tiket" class="w-full sm:w-auto bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700 active:scale-95 text-slate-200 font-semibold px-6 sm:px-8 py-3.5 sm:py-4 rounded-xl text-sm transition flex items-center justify-center gap-2">
-                    Cek Tiket & Download E-BIB
+                <a href="{{ route('public.submit.index') }}" class="w-full sm:w-auto bg-white hover:bg-slate-50 border border-slate-200 hover:border-slate-300 active:scale-95 text-slate-800 font-bold px-6 py-3.5 rounded-xl text-sm transition shadow-xs flex items-center justify-center gap-2 whitespace-nowrap">
+                    <span>🏃 Lapor / Submit Lari</span>
+                </a>
+                <a href="{{ route('public.ticket.index') }}" class="w-full sm:w-auto bg-white hover:bg-slate-50 border border-slate-200 hover:border-slate-300 active:scale-95 text-slate-700 font-bold px-5 py-3.5 rounded-xl text-sm transition shadow-xs flex items-center justify-center gap-2 whitespace-nowrap">
+                    <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"></path></svg>
+                    <span>Cek E-BIB</span>
                 </a>
             </div>
         </section>
 
         <!-- Active Events Section -->
-        <section id="events" class="max-w-7xl mx-auto px-4 sm:px-6 py-10 sm:py-12 border-t border-white/10">
-            <div class="flex items-center justify-between mb-6 sm:mb-8">
+        <section id="events" class="max-w-6xl mx-auto px-4 sm:px-6 py-10 border-t border-slate-200">
+            <div class="flex items-center justify-between mb-8">
                 <div>
-                    <h2 class="text-xl sm:text-3xl font-extrabold text-white">Event Lari Mendatang</h2>
-                    <p class="text-xs sm:text-sm text-slate-400 mt-1">Pilih kategori lomba favorit Anda dan amankan slot sebelum kuota habis.</p>
+                    <h2 class="text-xl sm:text-2xl font-extrabold text-slate-900">Event Lari Aktif</h2>
+                    <p class="text-xs sm:text-sm text-slate-500 mt-0.5">Pilih tantangan lari dan amankan slot pendaftaranmu.</p>
                 </div>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 @forelse($events as $event)
-                    <div class="bg-slate-900/80 border border-white/10 rounded-2xl overflow-hidden hover:border-sky-500/50 transition duration-300 flex flex-col justify-between shadow-2xl">
+                    <div class="bg-white border border-slate-200 rounded-2xl overflow-hidden hover:border-orange-300 transition duration-200 flex flex-col justify-between shadow-xs hover:shadow-md">
                         <div>
-                            <!-- Card Cover Image Segment -->
-                            <div class="h-44 sm:h-48 relative overflow-hidden bg-slate-950 group">
+                            <!-- Card Banner Image -->
+                            <div class="h-44 relative overflow-hidden bg-slate-100">
                                 @if($event->banner_path)
                                     <img 
                                         src="{{ asset('storage/' . $event->banner_path) }}" 
                                         alt="{{ $event->title }}" 
-                                        class="w-full h-full object-cover object-center group-hover:scale-105 transition duration-500"
+                                        class="w-full h-full object-cover"
                                     >
                                 @else
                                     <img 
                                         src="https://images.unsplash.com/photo-1530549387789-4c1017266635?w=700&auto=format&fit=crop&q=80" 
                                         alt="{{ $event->title }}" 
-                                        class="w-full h-full object-cover object-center opacity-75 group-hover:scale-105 transition duration-500"
+                                        class="w-full h-full object-cover"
                                     >
                                 @endif
-                                <div class="absolute inset-0 bg-gradient-to-t from-slate-950/60 via-transparent to-transparent pointer-events-none"></div>
 
-                                <div class="absolute top-3 left-3 right-3 flex justify-between items-start pointer-events-none">
-                                    <span class="px-2.5 py-1 rounded-full text-[10px] sm:text-[11px] font-bold uppercase tracking-wider bg-emerald-500/90 text-white backdrop-blur-md shadow-md">
-                                        Registrasi Dibuka
+                                <div class="absolute top-3 left-3 right-3 flex justify-between items-start">
+                                    <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-600 text-white shadow-xs">
+                                        Pendaftaran Dibuka
                                     </span>
-                                    <span class="px-2.5 py-1 rounded-lg text-[10px] sm:text-[11px] font-mono font-semibold bg-slate-950/80 text-sky-300 backdrop-blur-md border border-white/10 shadow-md">
+                                    <span class="px-2.5 py-0.5 rounded-lg text-[10px] font-mono font-semibold bg-white/90 text-slate-700 backdrop-blur-xs border border-slate-200 shadow-xs">
                                         {{ $event->event_start_date->format('d M Y') }}
                                     </span>
                                 </div>
                             </div>
 
-                            <div class="p-4 sm:p-6 space-y-3.5 sm:space-y-4">
+                            <div class="p-5 space-y-3">
                                 <div>
-                                    <span class="text-[11px] text-sky-400 font-semibold block uppercase tracking-wider">{{ $event->organizer?->name }}</span>
-                                    <h3 class="text-lg sm:text-xl font-bold text-white line-clamp-1 mt-0.5">{{ $event->title }}</h3>
+                                    <span class="text-[10px] text-orange-600 font-bold uppercase tracking-wider block">Virtual Run</span>
+                                    <h3 class="text-base font-extrabold text-slate-900 line-clamp-1 mt-0.5">{{ $event->title }}</h3>
                                 </div>
 
-                                <div class="flex items-center gap-2 text-xs text-slate-300">
-                                    <svg class="w-4 h-4 text-sky-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
-                                    <span class="truncate">{{ $event->race_location_name }}</span>
-                                </div>
-
-                                <p class="text-xs text-slate-400 line-clamp-2">
-                                    {{ $event->short_description }}
+                                <p class="text-xs text-slate-500 line-clamp-2 leading-relaxed">
+                                    {{ $event->short_description ?: 'Event lari virtual terbuka untuk umum. Selesaikan tantangan dan dapatkan paket race pack resmi.' }}
                                 </p>
 
                                 <!-- Categories List -->
-                                <div class="space-y-2 pt-2 border-t border-slate-800">
-                                    <span class="text-[11px] text-slate-400 font-semibold uppercase tracking-wider block">Kategori Lari Tersedia:</span>
-                                    <div class="flex flex-wrap gap-1.5 sm:gap-2">
+                                <div class="space-y-1.5 pt-2 border-t border-slate-100">
+                                    <span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Kategori &amp; Biaya:</span>
+                                    <div class="space-y-1.5">
                                         @foreach($event->categories as $cat)
-                                            <div class="bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs flex items-center justify-between gap-3 w-full">
-                                                <span class="font-bold text-white">{{ $cat->name }} ({{ $cat->distance_km }}K)</span>
-                                                <span class="text-sky-400 font-bold font-mono">Rp {{ number_format($cat->getCurrentPrice(), 0, ',', '.') }}</span>
+                                            <div class="bg-slate-50 border border-slate-200/70 rounded-xl px-3 py-2 text-xs flex items-center justify-between">
+                                                <span class="font-bold text-slate-800">{{ $cat->name }} ({{ $cat->distance_km }} KM)</span>
+                                                <span class="text-orange-600 font-bold font-mono">Rp {{ number_format($cat->getCurrentPrice(), 0, ',', '.') }}</span>
                                             </div>
                                         @endforeach
                                     </div>
                                 </div>
+
+                                @if($event->racepack_delivery_schedule)
+                                    <div class="bg-orange-50/70 border border-orange-200/60 rounded-xl px-3 py-2 text-[11px] text-orange-800 flex items-center gap-2">
+                                        <svg class="w-3.5 h-3.5 text-orange-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"></path></svg>
+                                        <span class="truncate">Kirim Race Pack: <strong>{{ $event->getRacepackDeliveryScheduleFormatted() }}</strong></span>
+                                    </div>
+                                @endif
                             </div>
                         </div>
 
-                        <div class="p-4 sm:p-6 pt-0">
-                            <a href="{{ route('public.register.show', $event->slug) }}" class="w-full bg-gradient-to-r from-sky-400 to-sky-500 hover:from-sky-300 hover:to-sky-400 active:scale-95 text-slate-950 font-black py-3 sm:py-3.5 rounded-xl text-xs sm:text-sm transition flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-sky-500/25">
-                                <span>Daftar Lomba Lari Sekarang &rarr;</span>
+                        <div class="p-5 pt-0 space-y-2">
+                            <a href="{{ route('public.register.show', $event->slug) }}" class="w-full bg-orange-600 hover:bg-orange-500 active:scale-95 text-white font-bold py-2.5 rounded-xl text-xs transition flex items-center justify-center gap-1.5 shadow-sm shadow-orange-600/20">
+                                <span>Daftar Sekarang &rarr;</span>
+                            </a>
+                            <a href="{{ route('public.leaderboard.show', $event->slug) }}" class="w-full bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 font-semibold py-2 rounded-xl text-xs transition flex items-center justify-center gap-1">
+                                <span>🏆 Lihat Leaderboard</span>
                             </a>
                         </div>
                     </div>
                 @empty
-                    <div class="col-span-3 text-center py-12 bg-white/5 rounded-2xl border border-white/10">
-                        <p class="text-slate-400 text-sm">Belum ada event lari aktif saat ini.</p>
+                    <div class="col-span-3 text-center py-16 bg-white rounded-2xl border border-slate-200">
+                        <div class="w-12 h-12 rounded-full bg-slate-100 text-slate-400 mx-auto flex items-center justify-center mb-3 text-xl">
+                            🏃
+                        </div>
+                        <h4 class="font-bold text-slate-800 mb-1">Belum Ada Event Aktif</h4>
+                        <p class="text-slate-500 text-xs">Event virtual run baru akan segera dibuka.</p>
                     </div>
                 @endforelse
             </div>
         </section>
 
-        <!-- Feature Pillars -->
-        <section class="max-w-7xl mx-auto px-4 sm:px-6 py-10 sm:py-16 border-t border-white/10">
-            <div class="text-center mb-8 sm:mb-12">
-                <h2 class="text-xl sm:text-3xl font-extrabold text-white">Dirancang Spesifik untuk Ekosistem Lari</h2>
-                <p class="text-xs sm:text-sm text-slate-400 mt-1.5 sm:mt-2">Bukan sekadar tiket umum, Jelatix memahami detail teknis perlombaan lari.</p>
+        <!-- 3 Simple Steps -->
+        <section class="max-w-6xl mx-auto px-4 sm:px-6 py-12 border-t border-slate-200">
+            <div class="text-center mb-8">
+                <h2 class="text-xl sm:text-2xl font-extrabold text-slate-900">Cara Kerja Virtual Run</h2>
+                <p class="text-xs sm:text-sm text-slate-500 mt-1">Sederhana dan mudah diikuti dari mana saja.</p>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-5 sm:gap-8">
-                <div class="bg-white/5 border border-white/10 rounded-2xl p-5 sm:p-6">
-                    <div class="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-sky-500/20 text-sky-400 flex items-center justify-center font-bold mb-3 sm:mb-4 border border-sky-400/30">
-                        BIB
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+                <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs">
+                    <div class="w-9 h-9 rounded-xl bg-orange-100 text-orange-700 font-black flex items-center justify-center text-sm mb-3">
+                        1
                     </div>
-                    <h3 class="text-base sm:text-lg font-bold text-white mb-1.5 sm:mb-2">Penomoran BIB & VVIP Cantik</h3>
-                    <p class="text-xs text-slate-400 leading-relaxed">
-                        Generator nomor dada instan dengan proteksi khusus VVIP, atlet elite, dan pejabat agar nomor tidak tergeser saat proses sortir massal.
+                    <h3 class="text-sm font-bold text-slate-900 mb-1">Daftar &amp; Dapatkan E-BIB</h3>
+                    <p class="text-xs text-slate-500 leading-relaxed">
+                        Pilih kategori jarak dan jersey, bayar via QRIS otomatis, dan peroleh nomor dada E-BIB instan.
                     </p>
                 </div>
 
-                <div class="bg-white/5 border border-white/10 rounded-2xl p-5 sm:p-6">
-                    <div class="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold mb-3 sm:mb-4 border border-emerald-400/30">
-                        PDF
+                <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs">
+                    <div class="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-700 font-black flex items-center justify-center text-sm mb-3">
+                        2
                     </div>
-                    <h3 class="text-base sm:text-lg font-bold text-white mb-1.5 sm:mb-2">E-Ticket & QR Code Instan</h3>
-                    <p class="text-xs text-slate-400 leading-relaxed">
-                        Pengiriman tiket otomatis via email dengan barcode QR terenkripsi dan informasi detail race kit yang siap diunduh kapan saja oleh pelari.
+                    <h3 class="text-sm font-bold text-slate-900 mb-1">Lari &amp; Submit Bukti</h3>
+                    <p class="text-xs text-slate-500 leading-relaxed">
+                        Lari di jalanan atau treadmill. Cukup masukkan nomor E-BIB lalu kirim link Strava, Garmin, atau foto stopwatch.
                     </p>
                 </div>
 
-                <div class="bg-white/5 border border-white/10 rounded-2xl p-5 sm:p-6">
-                    <div class="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-purple-500/20 text-purple-400 flex items-center justify-center font-bold mb-3 sm:mb-4 border border-purple-400/30">
-                        GATE
+                <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs">
+                    <div class="w-9 h-9 rounded-xl bg-sky-100 text-sky-700 font-black flex items-center justify-center text-sm mb-3">
+                        3
                     </div>
-                    <h3 class="text-base sm:text-lg font-bold text-white mb-1.5 sm:mb-2">Tripay QRIS & Mailketing Queue</h3>
-                    <p class="text-xs text-slate-400 leading-relaxed">
-                        Pembayaran otomatis lunas via QRIS dan Virtual Account dengan sistem penahanan kuota 30 menit untuk mitigasi *war tiket*.
+                    <h3 class="text-sm font-bold text-slate-900 mb-1">Medali &amp; E-Sertifikat</h3>
+                    <p class="text-xs text-slate-500 leading-relaxed">
+                        Setelah tervalidasi, unduh E-Sertifikat resmi dan paket Race Pack beserta Medali dikirim via SPX Express.
                     </p>
                 </div>
             </div>
@@ -210,15 +217,14 @@
     </main>
 
     <!-- Footer -->
-    <footer class="border-t border-white/10 py-6 sm:py-8 bg-slate-950/80">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500 text-center sm:text-left">
+    <footer class="border-t border-slate-200 py-6 bg-white">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500 text-center sm:text-left">
             <div>
-                &copy; {{ date('Y') }} <strong>Jelatix Ticketing System</strong>. Platform Khusus Event Lari di Indonesia.
+                &copy; {{ date('Y') }} <strong>Virun Platform</strong>. Hak Cipta Dilindungi.
             </div>
-            <div class="flex flex-wrap gap-4 sm:gap-6 justify-center sm:justify-end">
-                <a href="/cek-tiket" class="hover:text-slate-300">Cek Tiket</a>
-                <a href="/organizer" class="hover:text-slate-300">Login EO</a>
-                <a href="/admin" class="hover:text-slate-300">Superadmin</a>
+            <div class="flex items-center gap-4 text-slate-600 font-medium">
+                <a href="{{ route('public.ticket.index') }}" class="hover:text-orange-600 transition">Cek E-BIB</a>
+                <a href="{{ route('public.submit.index') }}" class="hover:text-orange-600 transition">Submit Lari</a>
             </div>
         </div>
     </footer>

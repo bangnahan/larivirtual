@@ -3,6 +3,7 @@
 namespace App\Filament\Organizer\Widgets;
 
 use App\Models\Event;
+use App\Models\OrderAddon;
 use App\Models\Participant;
 use Filament\Widgets\Widget;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -136,10 +137,53 @@ class JerseyProductionRecapWidget extends Widget
             ];
         }
 
+        // Query Add-on & Merchandise Event
+        $addonsData = [];
+        $eventAddons = $event->addons()->orderBy('sort_order', 'asc')->get();
+
+        if ($eventAddons->isNotEmpty()) {
+            $addonCounts = OrderAddon::query()
+                ->join('orders', 'order_addons.order_id', '=', 'orders.id')
+                ->where('orders.event_id', $event->id)
+                ->whereIn('orders.status', ['paid', 'pending'])
+                ->selectRaw('order_addons.event_addon_id, orders.status, sum(order_addons.quantity) as total_qty')
+                ->groupBy('order_addons.event_addon_id', 'orders.status')
+                ->get();
+
+            $paidByAddon = [];
+            $pendingByAddon = [];
+
+            foreach ($addonCounts as $row) {
+                if ($row->status === 'paid') {
+                    $paidByAddon[$row->event_addon_id] = (int) $row->total_qty;
+                } else {
+                    $pendingByAddon[$row->event_addon_id] = (int) $row->total_qty;
+                }
+            }
+
+            foreach ($eventAddons as $ea) {
+                $paid = $paidByAddon[$ea->id] ?? 0;
+                $pending = $pendingByAddon[$ea->id] ?? 0;
+                $addonsData[] = [
+                    'id' => $ea->id,
+                    'name' => $ea->name,
+                    'price' => $ea->price,
+                    'weight_grams' => $ea->weight_grams,
+                    'is_unlimited' => $ea->isUnlimited(),
+                    'stock' => $ea->stock,
+                    'available_stock' => $ea->available_stock,
+                    'paid_qty' => $paid,
+                    'pending_qty' => $pending,
+                    'total_qty' => $paid + $pending,
+                ];
+            }
+        }
+
         return [
             'sizes' => $sizesData,
             'categories' => $event->categories()->get(),
             'matrix' => $matrix,
+            'addons' => $addonsData,
             'grand_total_paid' => $grandTotalPaid,
             'grand_total_pending' => $grandTotalPending,
             'grand_total' => $grandTotal,
@@ -152,7 +196,7 @@ class JerseyProductionRecapWidget extends Widget
         $recap = $this->recapData;
 
         $eventTitle = $event ? $event->title : 'Event';
-        $filename = 'rekap-produksi-jersey-'.date('Ymd-His').'.csv';
+        $filename = 'rekap-produksi-jersey-po-'.date('Ymd-His').'.csv';
 
         $headers = [
             'Content-Type' => 'text/csv; charset=UTF-8',
@@ -165,10 +209,10 @@ class JerseyProductionRecapWidget extends Widget
             // UTF-8 BOM for Excel
             fprintf($handle, chr(0xEF).chr(0xBB).chr(0xBF));
 
-            fputcsv($handle, ['REKAP KEBUTUHAN PRODUKSI JERSEY - JELATIX']);
+            fputcsv($handle, ['REKAP KEBUTUHAN PRODUKSI JERSEY & MERCHANDISE - VIRUN']);
             fputcsv($handle, ['Event:', $eventTitle]);
             fputcsv($handle, ['Tanggal Rekap:', now()->format('d F Y, H:i').' WIB']);
-            fputcsv($handle, ['Catatan:', 'Data siap produksi diambil dari peserta yang telah berstatus Lunas (Paid)']);
+            fputcsv($handle, ['Catatan:', 'Data siap produksi diambil dari peserta/pesanan yang telah berstatus Lunas (Paid)']);
             fputcsv($handle, []);
 
             // Summary Table
@@ -199,7 +243,7 @@ class JerseyProductionRecapWidget extends Widget
             }
 
             fputcsv($handle, [
-                'TOTAL KESELURUHAN',
+                'TOTAL KESELURUHAN JERSEY',
                 '',
                 '',
                 '',
@@ -233,6 +277,48 @@ class JerseyProductionRecapWidget extends Widget
                     $row[] = $catTotal;
                     fputcsv($handle, $row);
                 }
+            }
+
+            // Section: Rekap Add-on & Merchandise Event
+            if (! empty($recap['addons'])) {
+                fputcsv($handle, []);
+                fputcsv($handle, ['REKAP KEBUTUHAN PRODUKSI ADD-ON & MERCHANDISE EVENT']);
+                fputcsv($handle, [
+                    'NAMA ADD-ON / MERCHANDISE',
+                    'BERAT (GRAM)',
+                    'SIAP PRODUKSI (LUNAS)',
+                    'PENDING (ESTIMASI TAMBAHAN)',
+                    'TOTAL DIPESAN',
+                    'STATUS KUOTA STOK',
+                ]);
+
+                $addonTotalPaid = 0;
+                $addonTotalPending = 0;
+                $addonTotalAll = 0;
+
+                foreach ($recap['addons'] as $addon) {
+                    $addonTotalPaid += $addon['paid_qty'];
+                    $addonTotalPending += $addon['pending_qty'];
+                    $addonTotalAll += $addon['total_qty'];
+
+                    fputcsv($handle, [
+                        $addon['name'],
+                        $addon['weight_grams'].' gr',
+                        $addon['paid_qty'],
+                        $addon['pending_qty'],
+                        $addon['total_qty'],
+                        $addon['is_unlimited'] ? 'Unlimited' : "Batas: {$addon['stock']} pcs (Sisa {$addon['available_stock']})",
+                    ]);
+                }
+
+                fputcsv($handle, [
+                    'TOTAL ADD-ON / MERCHANDISE',
+                    '',
+                    $addonTotalPaid,
+                    $addonTotalPending,
+                    $addonTotalAll,
+                    '',
+                ]);
             }
 
             fclose($handle);

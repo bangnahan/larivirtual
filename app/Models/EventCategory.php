@@ -25,10 +25,6 @@ class EventCategory extends Model
     protected static function booted(): void
     {
         static::creating(function (EventCategory $category) {
-            if (empty($category->bib_prefix)) {
-                $category->bib_prefix = strtoupper(str_replace(' ', '', substr($category->name ?: 'RUN', 0, 4))) ?: 'RUN';
-            }
-
             if (empty($category->bib_start_number)) {
                 $category->bib_start_number = 1001;
             }

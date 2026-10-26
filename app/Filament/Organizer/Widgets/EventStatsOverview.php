@@ -35,9 +35,8 @@ class EventStatsOverview extends BaseWidget
         $totalParticipants = (clone $participantQuery)->count();
         $totalPaidOrders = (clone $orderQuery)->where('status', 'paid')->count();
         $totalRevenue = (clone $orderQuery)->where('status', 'paid')->sum('subtotal');
-        $rpcClaimed = (clone $participantQuery)->where('is_rpc_claimed', true)->count();
-        $rpcPercentage = $totalParticipants > 0 ? round(($rpcClaimed / $totalParticipants) * 100, 1) : 0;
-        $vipCount = (clone $participantQuery)->where('is_vip', true)->count();
+        $jerseyOrdered = (clone $participantQuery)->whereNotNull('jersey_size_id')->count();
+        $finisherCount = (clone $participantQuery)->where('finisher_status', 'finisher')->count();
 
         return [
             Stat::make('Total Pelari Terdaftar', number_format($totalParticipants, 0, ',', '.'))
@@ -50,14 +49,14 @@ class EventStatsOverview extends BaseWidget
                 ->descriptionIcon('heroicon-m-banknotes')
                 ->color('success'),
 
-            Stat::make('Pengambilan Race Pack (RPC)', "{$rpcClaimed} / {$totalParticipants} ({$rpcPercentage}%)")
-                ->description('Status Pengambilan Paket Lomba')
-                ->descriptionIcon('heroicon-m-check-badge')
-                ->color($rpcPercentage > 50 ? 'success' : 'warning'),
+            Stat::make('Total Jersey Dipesan', number_format($jerseyOrdered, 0, ',', '.'))
+                ->description('Kebutuhan Produksi Vendor')
+                ->descriptionIcon('heroicon-m-shopping-bag')
+                ->color('info'),
 
-            Stat::make('Peserta VVIP & Undangan', number_format($vipCount, 0, ',', '.'))
-                ->description('Nomor BIB Khusus Terlindungi')
-                ->descriptionIcon('heroicon-m-star')
+            Stat::make('Total Finisher Lari', number_format($finisherCount, 0, ',', '.'))
+                ->description('Peserta Menyelesaikan Target')
+                ->descriptionIcon('heroicon-m-trophy')
                 ->color('warning'),
         ];
     }

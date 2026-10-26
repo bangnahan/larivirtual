@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
+use Illuminate\Support\Facades\Storage;
 
 class Event extends Model
 {
@@ -19,10 +20,101 @@ class Event extends Model
         'event_end_date' => 'datetime',
         'registration_open_date' => 'datetime',
         'registration_close_date' => 'datetime',
+        'race_start_date' => 'datetime',
+        'race_end_date' => 'datetime',
+        'racepack_delivery_start_date' => 'datetime',
+        'racepack_delivery_end_date' => 'datetime',
         'rpc_start_date' => 'datetime',
         'rpc_end_date' => 'datetime',
         'auto_assign_bib' => 'boolean',
+        'is_meta_capi_enabled' => 'boolean',
     ];
+
+    /**
+     * Cek apakah event ini mengaktifkan background e-BIB kustom
+     */
+    public function hasEbibBackground(): bool
+    {
+        return ! empty($this->ebib_background_path);
+    }
+
+    /**
+     * Cek apakah event ini mengaktifkan background e-sertifikat kustom
+     */
+    public function hasCertificateBackground(): bool
+    {
+        return ! empty($this->certificate_background_path);
+    }
+
+    /**
+     * Dapatkan base64 Data URI untuk gambar background e-BIB (aman untuk DomPDF)
+     */
+    public function getEbibBackgroundBase64(): ?string
+    {
+        if (! empty($this->ebib_background_path) && Storage::disk('public')->exists($this->ebib_background_path)) {
+            $content = Storage::disk('public')->get($this->ebib_background_path);
+            $mime = Storage::disk('public')->mimeType($this->ebib_background_path) ?: 'image/jpeg';
+
+            return 'data:'.$mime.';base64,'.base64_encode($content);
+        }
+
+        return null;
+    }
+
+    /**
+     * Dapatkan base64 Data URI untuk gambar background e-sertifikat (aman untuk DomPDF)
+     */
+    public function getCertificateBackgroundBase64(): ?string
+    {
+        if (! empty($this->certificate_background_path) && Storage::disk('public')->exists($this->certificate_background_path)) {
+            $content = Storage::disk('public')->get($this->certificate_background_path);
+            $mime = Storage::disk('public')->mimeType($this->certificate_background_path) ?: 'image/jpeg';
+
+            return 'data:'.$mime.';base64,'.base64_encode($content);
+        }
+
+        return null;
+    }
+
+    /**
+     * Cek apakah event ini mengaktifkan dan mengonfigurasi Meta CAPI
+     */
+    public function hasMetaCapi(): bool
+    {
+        return (bool) $this->is_meta_capi_enabled
+            && ! empty($this->meta_pixel_id)
+            && ! empty($this->meta_capi_access_token);
+    }
+
+    /**
+     * Dapatkan jadwal pengiriman race pack yang diformat rapi
+     */
+    public function getRacepackDeliveryScheduleFormatted(): string
+    {
+        if (! empty($this->racepack_delivery_schedule)) {
+            return $this->racepack_delivery_schedule;
+        }
+
+        if ($this->racepack_delivery_start_date) {
+            $start = $this->racepack_delivery_start_date->format('d M Y');
+            if ($this->racepack_delivery_end_date) {
+                return $start.' - '.$this->racepack_delivery_end_date->format('d M Y');
+            }
+
+            return $start;
+        }
+
+        if ($this->rpc_start_date) {
+            $start = $this->rpc_start_date->format('d M Y');
+            if ($this->rpc_end_date) {
+                return $start.' - '.$this->rpc_end_date->format('d M Y');
+            }
+
+            return $start;
+        }
+
+        return 'Segera Diumumkan';
+    }
 
     public function organizer(): BelongsTo
     {
@@ -78,6 +170,11 @@ class Event extends Model
     public function customFields(): HasMany
     {
         return $this->hasMany(EventCustomField::class)->orderBy('sort_order');
+    }
+
+    public function addons(): HasMany
+    {
+        return $this->hasMany(EventAddon::class)->orderBy('sort_order')->orderBy('id');
     }
 
     public function promoCodes(): HasMany

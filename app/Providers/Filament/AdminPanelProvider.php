@@ -2,6 +2,9 @@
 
 namespace App\Providers\Filament;
 
+use App\Filament\Pages\Auth\Login;
+use App\Filament\Widgets\EventStatsOverview;
+use App\Filament\Widgets\JerseyProductionRecapWidget;
 use App\Http\Middleware\FilamentAuthenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -10,7 +13,6 @@ use Filament\Pages;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
-use Filament\Widgets;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
@@ -22,14 +24,21 @@ class AdminPanelProvider extends PanelProvider
 {
     public function panel(Panel $panel): Panel
     {
+        $adminPath = trim(env('FILAMENT_ADMIN_PATH', 'izinmasukbang'), '/');
+
         return $panel
             ->default()
             ->id('admin')
-            ->path('admin')
-            ->login()
-            ->brandName('Jelatix Superadmin')
+            ->path($adminPath ?: 'admin')
+            ->login(Login::class)
+            ->brandName('Virun Admin')
+            ->darkMode(false)
             ->colors([
-                'primary' => Color::Emerald,
+                'primary' => Color::Orange,
+            ])
+            ->navigationGroups([
+                'Virtual Run & Event',
+                'Pendaftaran & Peserta',
             ])
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')
@@ -38,8 +47,8 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\\Filament\\Widgets')
             ->widgets([
-                Widgets\AccountWidget::class,
-                Widgets\FilamentInfoWidget::class,
+                EventStatsOverview::class,
+                JerseyProductionRecapWidget::class,
             ])
             ->middleware([
                 EncryptCookies::class,

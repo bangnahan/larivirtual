@@ -2,7 +2,6 @@
 
 namespace App\Filament\Organizer\Resources;
 
-use App\Filament\Organizer\Pages\RpcScanner;
 use App\Filament\Organizer\Resources\ParticipantResource\Pages;
 use App\Models\EventCategory;
 use App\Models\Participant;
@@ -16,7 +15,6 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ParticipantResource extends Resource
@@ -41,16 +39,7 @@ class ParticipantResource extends Resource
                         Forms\Components\TextInput::make('bib_number')
                             ->label('Nomor BIB')
                             ->placeholder('Contoh: 10K1001 atau 0001')
-                            ->helperText('Nomor dada yang dicetak fisik'),
-                        Forms\Components\Toggle::make('is_vip')
-                            ->label('Peserta VVIP')
-                            ->helperText('Tamu kehormatan / Sponsor / Atlet'),
-                        Forms\Components\Toggle::make('is_custom_bib')
-                            ->label('Kunci BIB (Custom VVIP)')
-                            ->helperText('Jika aktif, nomor tidak akan tergeser saat bulk remap'),
-                        Forms\Components\TextInput::make('custom_bib_reason')
-                            ->label('Alasan Custom BIB / Catatan VIP')
-                            ->columnSpanFull(),
+                            ->helperText('Nomor dada unik peserta'),
                     ]),
 
                 Forms\Components\Section::make('Data Identitas Pelari')
@@ -109,15 +98,6 @@ class ParticipantResource extends Resource
                         Forms\Components\DatePicker::make('birth_date')
                             ->label('Tanggal Lahir')
                             ->required(),
-                        Forms\Components\Select::make('blood_type')
-                            ->label('Golongan Darah')
-                            ->options([
-                                'A+' => 'A+', 'A-' => 'A-',
-                                'B+' => 'B+', 'B-' => 'B-',
-                                'AB+' => 'AB+', 'AB-' => 'AB-',
-                                'O+' => 'O+', 'O-' => 'O-',
-                                'Unknown' => 'Tidak Tahu',
-                            ])->default('Unknown'),
                         Forms\Components\TextInput::make('phone')
                             ->label('Nomor WhatsApp/HP')
                             ->tel()
@@ -126,25 +106,6 @@ class ParticipantResource extends Resource
                             ->label('Email')
                             ->email()
                             ->required(),
-                    ]),
-
-                Forms\Components\Section::make('Kontak Darurat & Riwayat Medis')
-                    ->columns(3)
-                    ->schema([
-                        Forms\Components\TextInput::make('emergency_contact_name')
-                            ->label('Nama Kontak Darurat')
-                            ->required(),
-                        Forms\Components\TextInput::make('emergency_contact_phone')
-                            ->label('No. Telp Darurat')
-                            ->tel()
-                            ->required(),
-                        Forms\Components\TextInput::make('emergency_contact_relation')
-                            ->label('Hubungan')
-                            ->placeholder('Istri, Orang Tua, Teman')
-                            ->required(),
-                        Forms\Components\Textarea::make('medical_conditions')
-                            ->label('Riwayat Medis / Alergi')
-                            ->columnSpanFull(),
                     ]),
             ]);
     }
@@ -159,15 +120,7 @@ class ParticipantResource extends Resource
                     ->sortable()
                     ->weight('bold')
                     ->fontFamily('mono')
-                    ->color(fn (Participant $record) => $record->is_vip ? 'warning' : 'primary'),
-
-                Tables\Columns\IconColumn::make('is_vip')
-                    ->label('VIP')
-                    ->boolean()
-                    ->trueIcon('heroicon-s-star')
-                    ->trueColor('warning')
-                    ->falseIcon('heroicon-o-minus')
-                    ->falseColor('gray'),
+                    ->color('primary'),
 
                 Tables\Columns\TextColumn::make('bib_name')
                     ->label('Nama di BIB')
@@ -189,19 +142,6 @@ class ParticipantResource extends Resource
                     ->label('Jersey')
                     ->badge(),
 
-                Tables\Columns\TextColumn::make('blood_type')
-                    ->label('Gol. Darah')
-                    ->badge()
-                    ->color('danger'),
-
-                Tables\Columns\IconColumn::make('is_rpc_claimed')
-                    ->label('Ambil RPC')
-                    ->boolean()
-                    ->trueIcon('heroicon-s-check-circle')
-                    ->trueColor('success')
-                    ->falseIcon('heroicon-o-x-circle')
-                    ->falseColor('gray'),
-
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Tgl Daftar')
                     ->dateTime('d M Y, H:i')
@@ -221,52 +161,8 @@ class ParticipantResource extends Resource
                         }
                     }),
 
-                Tables\Filters\TernaryFilter::make('is_vip')
-                    ->label('Hanya Tamu VVIP'),
-
-                Tables\Filters\TernaryFilter::make('is_rpc_claimed')
-                    ->label('Status Pengambilan RPC'),
-
-                Tables\Filters\SelectFilter::make('blood_type')
-                    ->label('Golongan Darah')
-                    ->options([
-                        'A+' => 'A+', 'B+' => 'B+', 'AB+' => 'AB+', 'O+' => 'O+',
-                    ]),
             ])
             ->actions([
-                // 1. Action: Tetapkan Custom BIB VVIP
-                Tables\Actions\Action::make('custom_bib')
-                    ->label('Custom BIB VVIP')
-                    ->icon('heroicon-o-sparkles')
-                    ->color('warning')
-                    ->form([
-                        Forms\Components\TextInput::make('custom_bib_number')
-                            ->label('Nomor Cantik / Khusus')
-                            ->default(fn (Participant $record) => $record->bib_number)
-                            ->required()
-                            ->placeholder('Contoh: 0001, 8888, VIP-01'),
-                        Forms\Components\TextInput::make('reason')
-                            ->label('Alasan / Jabatan Tamu')
-                            ->default(fn (Participant $record) => $record->custom_bib_reason ?: 'Tamu VVIP')
-                            ->required(),
-                    ])
-                    ->action(function (Participant $record, array $data, BibGeneratorService $bibService) {
-                        try {
-                            $bibService->assignCustomVipBib($record, $data['custom_bib_number'], $data['reason']);
-
-                            Notification::make()
-                                ->title('Nomor BIB VVIP Berhasil Disimpan')
-                                ->body("Peserta {$record->full_name} kini memiliki nomor BIB {$data['custom_bib_number']}.")
-                                ->success()
-                                ->send();
-                        } catch (\Exception $e) {
-                            Notification::make()
-                                ->title('Gagal Menyimpan BIB')
-                                ->body($e->getMessage())
-                                ->danger()
-                                ->send();
-                        }
-                    }),
 
                 // 2. Action: Download E-Ticket PDF
                 Tables\Actions\Action::make('download_ticket')
@@ -326,120 +222,25 @@ class ParticipantResource extends Resource
                         }
                     }),
 
-                // 4. Action: Official BIB Transfer / Ganti Pelari
-                Tables\Actions\Action::make('transfer_ticket')
-                    ->label('Transfer Tiket')
-                    ->icon('heroicon-o-arrows-right-left')
-                    ->color('warning')
-                    ->modalHeading('Official BIB Transfer (Ganti Pelari)')
-                    ->modalDescription(fn (Participant $record) => "Ganti data pemilik nomor BIB {$record->bib_number} ({$record->full_name}) ke pelari baru.")
-                    ->form([
-                        Forms\Components\TextInput::make('full_name')
-                            ->label('Nama Lengkap Pelari Baru')
-                            ->required(),
-                        Forms\Components\TextInput::make('bib_name')
-                            ->label('Nama di BIB Baru (Max 14 Karakter)')
-                            ->maxLength(14)
-                            ->required(),
-                        Forms\Components\TextInput::make('email')
-                            ->label('Email Pelari Baru')
-                            ->email()
-                            ->required(),
-                        Forms\Components\TextInput::make('phone')
-                            ->label('Nomor WhatsApp Pelari Baru')
-                            ->tel()
-                            ->required(),
-                        Forms\Components\Select::make('id_type')
-                            ->label('Jenis Identitas')
-                            ->options(['KTP' => 'KTP', 'SIM' => 'SIM', 'Passport' => 'Passport', 'KIA' => 'KIA'])
-                            ->default('KTP')
-                            ->required(),
-                        Forms\Components\TextInput::make('id_number')
-                            ->label('Nomor Identitas (NIK/Paspor)')
-                            ->required(),
-                        Forms\Components\Select::make('gender')
-                            ->label('Jenis Kelamin')
-                            ->options(['male' => 'Laki-laki', 'female' => 'Perempuan'])
-                            ->required(),
-                        Forms\Components\DatePicker::make('birth_date')
-                            ->label('Tanggal Lahir')
-                            ->required(),
-                        Forms\Components\Select::make('blood_type')
-                            ->label('Golongan Darah')
-                            ->options([
-                                'A+' => 'A+', 'A-' => 'A-', 'B+' => 'B+', 'B-' => 'B-',
-                                'AB+' => 'AB+', 'AB-' => 'AB-', 'O+' => 'O+', 'O-' => 'O-',
-                                'Unknown' => 'Tidak Tahu',
-                            ])->required(),
-                        Forms\Components\TextInput::make('emergency_contact_name')
-                            ->label('Nama Kontak Darurat')
-                            ->required(),
-                        Forms\Components\TextInput::make('emergency_contact_phone')
-                            ->label('No. Telp Darurat')
-                            ->tel()
-                            ->required(),
-                        Forms\Components\TextInput::make('emergency_contact_relation')
-                            ->label('Hubungan')
-                            ->required(),
-                        Forms\Components\Textarea::make('medical_conditions')
-                            ->label('Riwayat Medis / Alergi'),
-                    ])
-                    ->action(function (Participant $record, array $data, MailketingService $mailketing, TicketPdfService $ticketService) {
-                        $oldName = $record->full_name;
-                        $data['bib_name'] = strtoupper($data['bib_name']);
-                        $data['qr_token'] = Str::random(32);
-                        $record->update($data);
-
-                        // Kirim email tiket baru ke peserta pengganti
-                        $pdfBinary = $ticketService->generateTicketPdf($record);
-                        $pdfBase64 = base64_encode($pdfBinary);
-                        $subject = "Konfirmasi Transfer Tiket BIB {$record->bib_number}: {$record->event?->title}";
-                        $html = view('emails.ticket_confirmed', [
-                            'participant' => $record,
-                            'event' => $record->event,
-                            'order' => $record->order,
-                        ])->render();
-
-                        $mailketing->sendEmail(
-                            recipientEmail: $record->email,
-                            recipientName: $record->full_name,
-                            subject: $subject,
-                            htmlContent: $html,
-                            attachmentBase64: $pdfBase64,
-                            attachmentName: "E-Ticket-{$record->bib_number}.pdf",
-                            attachmentUrl: route('public.ticket.download', $record->qr_token)
-                        );
-
-                        Notification::make()
-                            ->title('Transfer Tiket Berhasil')
-                            ->body("BIB {$record->bib_number} berhasil dialihkan dari {$oldName} ke {$record->full_name}. E-Ticket baru dikirim ke {$record->email}.")
-                            ->success()
-                            ->send();
-                    }),
-
                 Tables\Actions\EditAction::make(),
             ])
             ->headerActions([
-                Tables\Actions\Action::make('open_scanner')
-                    ->label('Buka Scanner RPC')
-                    ->icon('heroicon-o-qr-code')
-                    ->color('primary')
-                    ->url(fn () => RpcScanner::getUrl()),
-
-                // Header Action 1: Export CSV untuk Vendor Cetak BIB & Timing Chip
-                Tables\Actions\Action::make('export_vendor_csv')
-                    ->label('Export Cetak BIB & Timing (CSV)')
-                    ->icon('heroicon-o-arrow-down-tray')
+                // Header Action 1: Export CSV untuk Vendor Cetak Nomor BIB (Virtual Run)
+                Tables\Actions\Action::make('export_vendor_bib_csv')
+                    ->label('Export Cetak Nomor BIB (CSV)')
+                    ->icon('heroicon-o-identification')
                     ->color('success')
                     ->action(function (): StreamedResponse {
                         $filename = 'data-peserta-cetak-bib-'.date('Ymd-His').'.csv';
                         $headers = [
-                            'Content-Type' => 'text/csv',
+                            'Content-Type' => 'text/csv; charset=UTF-8',
                             'Content-Disposition' => "attachment; filename=\"{$filename}\"",
                         ];
 
                         return response()->streamDownload(function () {
                             $handle = fopen('php://output', 'w');
+                            fprintf($handle, chr(0xEF).chr(0xBB).chr(0xBF));
+
                             fputcsv($handle, [
                                 'BIB_NUMBER',
                                 'NAMA_BIB',
@@ -448,20 +249,14 @@ class ParticipantResource extends Resource
                                 'JARAK_KM',
                                 'GENDER',
                                 'TGL_LAHIR',
-                                'GOL_DARAH',
                                 'UKURAN_JERSEY',
                                 'NO_HP',
                                 'EMAIL',
-                                'KONTAK_DARURAT_NAMA',
-                                'KONTAK_DARURAT_TELP',
-                                'KONTAK_DARURAT_HUBUNGAN',
-                                'RIWAYAT_MEDIS',
-                                'STATUS_VIP',
-                                'STATUS_RPC',
-                                'QR_TOKEN',
+                                'KODE_ORDER',
+                                'STATUS_BAYAR',
                             ]);
 
-                            $query = Participant::with(['category', 'jerseySize'])
+                            $query = Participant::with(['category', 'jerseySize', 'order'])
                                 ->whereNotNull('bib_number')
                                 ->orderBy('bib_number', 'asc');
 
@@ -476,26 +271,7 @@ class ParticipantResource extends Resource
 
                             $query->chunk(100, function ($participants) use ($handle) {
                                 foreach ($participants as $p) {
-                                    fputcsv($handle, [
-                                        $p->bib_number,
-                                        $p->bib_name,
-                                        $p->full_name,
-                                        $p->category?->name,
-                                        $p->category?->distance_km,
-                                        $p->gender,
-                                        $p->birth_date?->format('Y-m-d'),
-                                        $p->blood_type,
-                                        $p->jerseySize?->size_name,
-                                        $p->phone,
-                                        $p->email,
-                                        $p->emergency_contact_name,
-                                        $p->emergency_contact_phone,
-                                        $p->emergency_contact_relation,
-                                        $p->medical_conditions,
-                                        $p->is_vip ? 'VIP' : 'REGULER',
-                                        $p->is_rpc_claimed ? 'SUDAH_KLAIM' : 'BELUM_KLAIM',
-                                        $p->qr_token,
-                                    ]);
+                                    \App\Filament\Resources\ParticipantResource::writeBibCsvRow($handle, $p);
                                 }
                             });
 
@@ -528,11 +304,10 @@ class ParticipantResource extends Resource
                         Forms\Components\Select::make('sort_by')
                             ->label('Kriteria Pengurutan')
                             ->options([
-                                'estimated_finish_time' => 'Estimasi Waktu Finish / Pace Lari',
-                                'birth_date' => 'Usia Peserta',
-                                'gender' => 'Jenis Kelamin',
                                 'created_at' => 'Waktu Pendaftaran Awal',
-                            ])->default('estimated_finish_time')->required(),
+                                'gender' => 'Jenis Kelamin',
+                                'birth_date' => 'Usia Peserta',
+                            ])->default('created_at')->required(),
                         Forms\Components\Select::make('direction')
                             ->label('Arah Urutan')
                             ->options([
@@ -561,6 +336,45 @@ class ParticipantResource extends Resource
                     }),
             ])
             ->bulkActions([
+                Tables\Actions\BulkAction::make('export_bib_selected')
+                    ->label('Export Cetak BIB Terpilih (CSV)')
+                    ->icon('heroicon-o-identification')
+                    ->color('success')
+                    ->action(function ($records): StreamedResponse {
+                        $filename = 'data-cetak-nomor-bib-terpilih-'.date('Ymd-His').'.csv';
+                        $headers = [
+                            'Content-Type' => 'text/csv; charset=UTF-8',
+                            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
+                        ];
+
+                        return response()->streamDownload(function () use ($records) {
+                            $handle = fopen('php://output', 'w');
+                            fprintf($handle, chr(0xEF).chr(0xBB).chr(0xBF));
+
+                            fputcsv($handle, [
+                                'BIB_NUMBER',
+                                'NAMA_BIB',
+                                'NAMA_LENGKAP',
+                                'KATEGORI',
+                                'JARAK_KM',
+                                'GENDER',
+                                'TGL_LAHIR',
+                                'UKURAN_JERSEY',
+                                'NO_HP',
+                                'EMAIL',
+                                'KODE_ORDER',
+                                'STATUS_BAYAR',
+                            ]);
+
+                            $records->loadMissing(['category', 'jerseySize', 'order']);
+
+                            foreach ($records as $p) {
+                                \App\Filament\Resources\ParticipantResource::writeBibCsvRow($handle, $p);
+                            }
+
+                            fclose($handle);
+                        }, $filename, $headers);
+                    }),
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),

@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 
 class Participant extends Model
@@ -15,14 +16,12 @@ class Participant extends Model
 
     protected $casts = [
         'birth_date' => 'date',
-        'is_vip' => 'boolean',
-        'is_custom_bib' => 'boolean',
         'custom_fields_data' => 'array',
         'waiver_accepted' => 'boolean',
         'waiver_accepted_at' => 'datetime',
-        'is_rpc_claimed' => 'boolean',
-        'rpc_claimed_at' => 'datetime',
-        'is_proxy_claimed' => 'boolean',
+        'total_distance_km' => 'decimal:2',
+        'total_duration_seconds' => 'integer',
+        'finished_at' => 'datetime',
     ];
 
     protected static function booted(): void
@@ -49,13 +48,63 @@ class Participant extends Model
         return $this->belongsTo(JerseySize::class);
     }
 
-    public function rpcClaimedBy(): BelongsTo
+    public function submissions(): HasMany
     {
-        return $this->belongsTo(User::class, 'rpc_claimed_by_user_id');
+        return $this->hasMany(ActivitySubmission::class);
     }
 
     public function getEventAttribute(): ?Event
     {
         return $this->category?->event;
+    }
+
+    public function isFinisher(): bool
+    {
+        return $this->finisher_status === 'finisher';
+    }
+
+    public function targetDistance(): float
+    {
+        return (float) ($this->category?->distance_km ?? 5.0);
+    }
+
+    public function progressPercentage(): float
+    {
+        $target = $this->targetDistance();
+        if ($target <= 0) {
+            return 100.0;
+        }
+
+        $pct = ((float) $this->total_distance_km / $target) * 100;
+
+        return min(100.0, round($pct, 1));
+    }
+
+    public function remainingDistance(): float
+    {
+        $target = $this->targetDistance();
+        $remaining = $target - (float) $this->total_distance_km;
+
+        return max(0.0, round($remaining, 2));
+    }
+
+    public function recalculateProgress(): void
+    {
+        $approvedSubmissions = $this->submissions()
+            ->where('validation_status', 'approved')
+            ->get();
+
+        $totalDistance = $approvedSubmissions->sum('distance_km');
+        $totalDuration = $approvedSubmissions->sum('duration_seconds');
+        $target = $this->targetDistance();
+
+        $isFinished = $totalDistance >= $target;
+
+        $this->update([
+            'total_distance_km' => $totalDistance,
+            'total_duration_seconds' => $totalDuration,
+            'finisher_status' => $isFinished ? 'finisher' : 'in_progress',
+            'finished_at' => $isFinished ? ($this->finished_at ?? now()) : null,
+        ]);
     }
 }
