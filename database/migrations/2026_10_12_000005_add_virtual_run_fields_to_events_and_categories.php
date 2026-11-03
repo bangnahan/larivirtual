@@ -31,7 +31,7 @@ return new class extends Migration
 
         Schema::table('event_categories', function (Blueprint $table) {
             if (! Schema::hasColumn('event_categories', 'base_weight_grams')) {
-                $table->unsignedInteger('base_weight_grams')->default(500)->after('price');
+                $table->unsignedInteger('base_weight_grams')->default(500)->after('normal_price');
             }
             $table->string('bib_prefix', 20)->nullable()->default(null)->change();
         });
