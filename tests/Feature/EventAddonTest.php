@@ -221,14 +221,13 @@ class EventAddonTest extends TestCase
         // Addon Bottle 2x 130.000
         // Total Addons = 255.000
         // Subtotal = 150.000 + 255.000 = 405.000
-        // Weight: 1 participant * 500gr + 200gr + 200gr = 900gr -> rounded to 1kg -> shipping 10.000
-        // Platform fee: 5.000
-        // Grand Total: 405.000 + 10.000 + 5.000 = 420.000
+        // Platform fee: 0
+        // Grand Total: 405.000 + 10.000 = 415.000
         $this->assertEquals(405000, (int) $order->subtotal);
         $this->assertEquals(255000, (int) $order->addons_total);
         $this->assertEquals(10000, (int) $order->shipping_cost);
-        $this->assertEquals(5000, (int) $order->platform_fee);
-        $this->assertEquals(420000, (int) $order->grand_total);
+        $this->assertEquals(0, (int) $order->platform_fee);
+        $this->assertEquals(415000, (int) $order->grand_total);
 
         // Verify OrderAddon records
         $this->assertCount(2, $order->addons);

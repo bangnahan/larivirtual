@@ -114,8 +114,11 @@
                             <span class="text-3xl sm:text-4xl font-extrabold text-white font-mono tracking-wider my-1.5 block">
                                 {{ $p->bib_number ?: 'SEDANG DI-GENERATE' }}
                             </span>
-                            <span class="text-xs font-semibold text-slate-200 uppercase block truncate mb-4">
+                            <span class="text-xs font-semibold text-slate-200 uppercase block truncate mb-1">
                                 {{ $p->full_name ?: $p->bib_name }} &bull; {{ $p->category?->name }}
+                            </span>
+                            <span class="text-[11px] text-orange-200 font-medium block mb-4">
+                                Jersey: {{ $p->jersey_full_spec }}
                             </span>
 
                             <div class="flex flex-col sm:flex-row gap-2.5 justify-center">
@@ -405,7 +408,10 @@
                                     </div>
                                     <div class="text-right shrink-0">
                                         <span class="text-xs font-bold text-slate-900 block font-mono">{{ $p->category?->name }}</span>
-                                        <span class="text-[10px] text-slate-500">Jersey: {{ $p->jerseySize?->size_name }}</span>
+                                        <span class="text-[10px] text-slate-500 block">Jersey: {{ $p->jersey_full_spec }}</span>
+                                        @if(($p->jersey_surcharge ?? 0) > 0)
+                                            <span class="text-[10px] font-bold text-orange-600 block font-mono">(+Rp {{ number_format($p->jersey_surcharge, 0, ',', '.') }})</span>
+                                        @endif
                                     </div>
                                 </div>
                             @endforeach
@@ -444,12 +450,21 @@
                     <!-- Rincian Biaya -->
                     <div class="border-t border-slate-200 pt-3 space-y-1.5 text-xs text-slate-600">
                         @php
-                            $ticketsSubtotal = $order->subtotal - ($order->addons_total ?? 0);
+                            $ticketsSubtotal = $order->subtotal - ($order->addons_total ?? 0) - ($order->jersey_surcharges_total ?? 0);
                         @endphp
                         <div class="flex justify-between">
                             <span>Subtotal Tiket ({{ $order->participants->count() }}x):</span>
                             <span class="font-medium text-slate-800">Rp {{ number_format($ticketsSubtotal, 0, ',', '.') }}</span>
                         </div>
+                        @if(($order->jersey_surcharges_total ?? 0) > 0)
+                            <div class="flex justify-between text-orange-700 font-medium">
+                                <span class="flex items-center gap-1">
+                                    <span>👕</span>
+                                    <span>Upgrade Jersey (Lengan / Size):</span>
+                                </span>
+                                <span class="font-bold text-orange-600 font-mono">+Rp {{ number_format($order->jersey_surcharges_total, 0, ',', '.') }}</span>
+                            </div>
+                        @endif
                         @if(($order->addons_total ?? 0) > 0)
                             <div class="flex justify-between">
                                 <span>Subtotal Add-on &amp; Merchandise:</span>

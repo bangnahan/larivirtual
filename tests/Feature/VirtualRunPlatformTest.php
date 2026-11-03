@@ -189,10 +189,10 @@ class VirtualRunPlatformTest extends TestCase
         $this->assertNotNull($order);
         // Subtotal: 150.000 + 200.000 = 350.000
         // Weight: 2 * 500 = 1000 gr = 1 kg -> Ongkir: 30.000
-        // Fee: 5.000 -> Grand Total: 385.000
+        // Fee: 0 -> Grand Total: 380.000
         $this->assertEquals(350000, (int) $order->subtotal);
         $this->assertEquals(30000, (int) $order->shipping_cost);
-        $this->assertEquals(385000, (int) $order->grand_total);
+        $this->assertEquals(380000, (int) $order->grand_total);
 
         // Verifikasi tabel order_shipping_addresses
         $this->assertNotNull($order->shippingAddress);

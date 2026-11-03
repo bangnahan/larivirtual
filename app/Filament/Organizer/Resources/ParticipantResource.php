@@ -3,9 +3,11 @@
 namespace App\Filament\Organizer\Resources;
 
 use App\Filament\Organizer\Resources\ParticipantResource\Pages;
+use App\Jobs\SendCertificateEmailJob;
 use App\Models\EventCategory;
 use App\Models\Participant;
 use App\Services\BibGeneratorService;
+use App\Services\CertificatePdfService;
 use App\Services\MailketingService;
 use App\Services\TicketPdfService;
 use Filament\Forms;
@@ -15,6 +17,7 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ParticipantResource extends Resource
@@ -58,6 +61,15 @@ class ParticipantResource extends Resource
                                 }
                             })
                             ->required(),
+                        Forms\Components\Select::make('jersey_type')
+                            ->label('Model Lengan Jersey')
+                            ->options([
+                                'short' => 'Lengan Pendek (Standar)',
+                                'singlet' => 'Singlet (Tanpa Lengan)',
+                                'long' => 'Lengan Panjang (+Rp 20.000)',
+                            ])
+                            ->placeholder('Tanpa Jersey (Medali Only)')
+                            ->nullable(),
                         Forms\Components\Select::make('jersey_size_id')
                             ->label('Ukuran Jersey')
                             ->relationship('jerseySize', 'size_name', function (Builder $query) {
@@ -70,7 +82,13 @@ class ParticipantResource extends Resource
                                     }
                                 }
                             })
-                            ->required(),
+                            ->placeholder('Tanpa Jersey (Medali Only)')
+                            ->nullable(),
+                        Forms\Components\TextInput::make('jersey_surcharge')
+                            ->label('Surcharge Jersey (Rp)')
+                            ->numeric()
+                            ->prefix('Rp')
+                            ->default(0),
                         Forms\Components\TextInput::make('full_name')
                             ->label('Nama Lengkap')
                             ->required(),
@@ -135,12 +153,22 @@ class ParticipantResource extends Resource
                 Tables\Columns\TextColumn::make('category.name')
                     ->label('Kategori')
                     ->badge()
+                    ->description(fn (Participant $record) => $record->category?->package_type_label)
                     ->color('info')
                     ->sortable(),
 
-                Tables\Columns\TextColumn::make('jerseySize.size_name')
+                Tables\Columns\TextColumn::make('jersey_full_spec')
                     ->label('Jersey')
-                    ->badge(),
+                    ->description(fn (Participant $record) => $record->category && ! $record->category->includes_medal ? 'Tanpa Medali' : ($record->jersey_surcharge > 0 ? '+Rp '.number_format($record->jersey_surcharge, 0, ',', '.') : null))
+                    ->sortable(),
+
+                Tables\Columns\TextColumn::make('finisher_status')
+                    ->label('Status Finisher')
+                    ->badge()
+                    ->state(fn (Participant $record): string => $record->isFinisher() ? 'Finisher 🏅' : 'In Progress')
+                    ->description(fn (Participant $record): string => number_format((float) $record->total_distance_km, 1).' / '.$record->targetDistance().' KM')
+                    ->color(fn (Participant $record): string => $record->isFinisher() ? 'success' : 'warning')
+                    ->sortable(),
 
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Tgl Daftar')
@@ -161,6 +189,12 @@ class ParticipantResource extends Resource
                         }
                     }),
 
+                Tables\Filters\SelectFilter::make('finisher_status')
+                    ->label('Status Finisher')
+                    ->options([
+                        'finisher' => 'Finisher 🏅',
+                        'in_progress' => 'In Progress 🏃',
+                    ]),
             ])
             ->actions([
 
@@ -220,6 +254,39 @@ class ParticipantResource extends Resource
                                 ->danger()
                                 ->send();
                         }
+                    }),
+
+                Tables\Actions\Action::make('download_certificate')
+                    ->label('Unduh Sertifikat')
+                    ->icon('heroicon-o-academic-cap')
+                    ->color('success')
+                    ->visible(fn (Participant $record): bool => $record->isFinisher())
+                    ->action(fn (Participant $record, CertificatePdfService $certService): StreamedResponse => response()->streamDownload(function () use ($record, $certService) {
+                        echo $certService->generateCertificatePdf($record);
+                    }, 'E-Certificate-Finisher-'.($record->bib_number ?: $record->id).'.pdf', ['Content-Type' => 'application/pdf'])
+                    ),
+
+                Tables\Actions\Action::make('resend_certificate')
+                    ->label('Kirim E-Sertifikat')
+                    ->icon('heroicon-o-paper-airplane')
+                    ->color('warning')
+                    ->visible(fn (Participant $record): bool => $record->isFinisher())
+                    ->form([
+                        Forms\Components\TextInput::make('recipient_email')
+                            ->label('Kirim Sertifikat ke Email')
+                            ->email()
+                            ->default(fn (Participant $record) => $record->email ?: $record->order?->customer_email)
+                            ->required()
+                            ->helperText('Default: email peserta saat mendaftar. Dapat diubah jika diminta dikirim ke email lain.'),
+                    ])
+                    ->action(function (Participant $record, array $data) {
+                        SendCertificateEmailJob::dispatch($record, $data['recipient_email']);
+
+                        Notification::make()
+                            ->title('E-Sertifikat Dijadwalkan')
+                            ->body("E-Sertifikat finisher sedang dikirimkan ke {$data['recipient_email']}")
+                            ->success()
+                            ->send();
                     }),
 
                 Tables\Actions\EditAction::make(),
@@ -374,6 +441,36 @@ class ParticipantResource extends Resource
 
                             fclose($handle);
                         }, $filename, $headers);
+                    }),
+                Tables\Actions\BulkAction::make('bulk_send_certificates')
+                    ->label('Kirim E-Sertifikat (Finisher Terpilih)')
+                    ->icon('heroicon-o-paper-airplane')
+                    ->color('success')
+                    ->requiresConfirmation()
+                    ->modalHeading('Kirim E-Sertifikat ke Finisher Terpilih')
+                    ->modalDescription('Sistem akan mengirimkan email E-Sertifikat resmi hanya kepada peserta yang berstatus Finisher dari data yang dipilih.')
+                    ->action(function (Collection $records) {
+                        $finishers = $records->filter(fn (Participant $p) => $p->isFinisher());
+
+                        if ($finishers->isEmpty()) {
+                            Notification::make()
+                                ->title('Tidak Ada Finisher')
+                                ->body('Tidak ada peserta terpilih yang berstatus Finisher.')
+                                ->warning()
+                                ->send();
+
+                            return;
+                        }
+
+                        foreach ($finishers as $finisher) {
+                            SendCertificateEmailJob::dispatch($finisher);
+                        }
+
+                        Notification::make()
+                            ->title('E-Sertifikat Terkirim')
+                            ->body("E-Sertifikat berhasil dijadwalkan untuk dikirim ke {$finishers->count()} finisher.")
+                            ->success()
+                            ->send();
                     }),
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\DeleteBulkAction::make(),

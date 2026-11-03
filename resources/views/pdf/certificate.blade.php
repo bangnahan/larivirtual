@@ -6,147 +6,179 @@
     @php
         $event = $participant->category?->event ?? $participant->event;
         $certBgBase64 = $event?->getCertificateBackgroundBase64();
+        $finishedDate = $participant->finished_at ? $participant->finished_at->format('d M Y') : now()->format('d M Y');
     @endphp
     <style>
         @page {
-            size: a4 landscape;
+            size: 297mm 210mm;
             margin: 0;
         }
-        body {
-            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+        * {
+            box-sizing: border-box;
             margin: 0;
             padding: 0;
-            background: #0f172a;
+        }
+        html, body {
+            width: 297mm;
+            height: 210mm;
+            overflow: hidden;
+            background-color: #030712;
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
             color: #ffffff;
             -webkit-print-color-adjust: exact;
         }
         .cert-container {
+            position: relative;
             width: 297mm;
             height: 210mm;
-            box-sizing: border-box;
-            position: relative;
-            padding: 16mm 20mm;
+            overflow: hidden;
             @if($certBgBase64)
             background: transparent;
-            border: none;
             @else
-            background: radial-gradient(circle at 50% 30%, #1e293b 0%, #0f172a 100%);
-            border: 8mm solid #090d16;
+            background: radial-gradient(circle at 50% 35%, #1e293b 0%, #0f172a 55%, #020617 100%);
             @endif
         }
+
         @if($certBgBase64)
-        .cert-border, .cert-corner {
-            display: none;
-        }
-        .cert-title {
-            text-shadow: 0 2px 8px rgba(0,0,0,0.9);
-        }
-        .recipient-name {
-            text-shadow: 0 2px 8px rgba(0,0,0,0.9);
+        .title-main, .participant-name, .title-sub, .desc-text {
+            text-shadow: 0 2px 8px rgba(0, 0, 0, 0.95);
         }
         .stats-table {
-            background: rgba(15, 23, 42, 0.85) !important;
+            background: rgba(15, 23, 42, 0.92) !important;
         }
-        @endif
-        .cert-border {
+        @else
+        .border-outer {
             position: absolute;
-            top: 6mm;
-            left: 6mm;
-            right: 6mm;
-            bottom: 6mm;
+            top: 8mm;
+            left: 8mm;
+            width: 281mm;
+            height: 194mm;
+            border: 2px solid #d97706;
+            pointer-events: none;
+        }
+        .border-inner {
+            position: absolute;
+            top: 11mm;
+            left: 11mm;
+            width: 275mm;
+            height: 188mm;
             border: 1px solid rgba(245, 158, 11, 0.4);
             pointer-events: none;
         }
-        .cert-corner {
+        .corner {
             position: absolute;
-            width: 14mm;
-            height: 14mm;
-            border: 2px solid #f59e0b;
+            width: 16mm;
+            height: 16mm;
+            border: 3px solid #f59e0b;
+            pointer-events: none;
         }
-        .corner-tl { top: 5mm; left: 5mm; border-right: none; border-bottom: none; }
-        .corner-tr { top: 5mm; right: 5mm; border-left: none; border-bottom: none; }
-        .corner-bl { bottom: 5mm; left: 5mm; border-right: none; border-top: none; }
-        .corner-br { bottom: 5mm; right: 5mm; border-left: none; border-top: none; }
+        .corner-tl { top: 7mm; left: 7mm; border-right: none; border-bottom: none; }
+        .corner-tr { top: 7mm; right: 7mm; border-left: none; border-bottom: none; }
+        .corner-bl { bottom: 7mm; left: 7mm; border-right: none; border-top: none; }
+        .corner-br { bottom: 7mm; right: 7mm; border-left: none; border-top: none; }
+        @endif
 
-        .header {
+        /* Header Section */
+        .header-box {
+            position: absolute;
+            top: 18mm;
+            left: 15mm;
+            width: 267mm;
             text-align: center;
-            margin-top: 6mm;
         }
-        .brand-badge {
+        .badge-pill {
             display: inline-block;
             background: rgba(245, 158, 11, 0.15);
-            color: #f59e0b;
-            font-size: 11pt;
+            color: #fbbf24;
+            font-size: 8.5pt;
             font-weight: 700;
             letter-spacing: 3px;
             padding: 4px 18px;
             border-radius: 20px;
             text-transform: uppercase;
-            border: 1px solid rgba(245, 158, 11, 0.3);
+            border: 1px solid rgba(245, 158, 11, 0.45);
         }
-        .cert-title {
-            font-size: 32pt;
+        .title-main {
+            font-size: 28pt;
             font-weight: 900;
-            letter-spacing: 2px;
-            margin: 8px 0 2px 0;
+            letter-spacing: 3px;
+            margin: 4.5mm 0 1.5mm 0;
             text-transform: uppercase;
             color: #ffffff;
         }
-        .cert-subtitle {
-            font-size: 12pt;
+        .title-sub {
+            font-size: 11.5pt;
+            font-weight: 600;
             color: #94a3b8;
             letter-spacing: 4px;
             text-transform: uppercase;
         }
-        .awarded-to {
-            font-size: 11pt;
+
+        /* Recipient Section */
+        .recipient-box {
+            position: absolute;
+            top: 63mm;
+            left: 15mm;
+            width: 267mm;
+            text-align: center;
+        }
+        .awarded-label {
+            font-size: 9.5pt;
             color: #cbd5e1;
-            margin-top: 8mm;
-            text-align: center;
-            letter-spacing: 1px;
-        }
-        .recipient-name {
-            font-size: 28pt;
-            font-weight: 800;
-            color: #38bdf8;
-            text-align: center;
-            margin: 3mm 0 2mm 0;
+            letter-spacing: 2.5px;
             text-transform: uppercase;
-            letter-spacing: 1px;
+            margin-bottom: 2.5mm;
         }
-        .category-text {
-            text-align: center;
-            font-size: 13pt;
-            color: #f8fafc;
-            margin-bottom: 6mm;
+        .participant-name {
+            font-size: 32pt;
+            font-weight: 900;
+            color: #38bdf8;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            margin-bottom: 3.5mm;
+            line-height: 1.1;
         }
-        .highlight-cat {
+        .desc-text {
+            font-size: 11pt;
+            color: #e2e8f0;
+            line-height: 1.6;
+            width: 220mm;
+            margin: 0 auto;
+        }
+        .highlight {
             color: #f59e0b;
             font-weight: 700;
         }
 
+        /* Stats Card Section */
+        .stats-box {
+            position: absolute;
+            top: 122mm;
+            left: 15mm;
+            width: 267mm;
+            text-align: center;
+        }
         .stats-table {
-            width: 80%;
+            width: 236mm;
             margin: 0 auto;
             border-collapse: collapse;
-            text-align: center;
-            background: rgba(30, 41, 59, 0.7);
+            background: rgba(15, 23, 42, 0.9);
+            border: 1.5px solid rgba(245, 158, 11, 0.35);
             border-radius: 8px;
-            overflow: hidden;
-            border: 1px solid rgba(255, 255, 255, 0.08);
         }
         .stats-table td {
-            padding: 10px 15px;
+            padding: 10px 16px;
+            text-align: center;
             border-right: 1px solid rgba(255, 255, 255, 0.08);
         }
         .stats-table td:last-child {
             border-right: none;
         }
-        .stat-label {
-            font-size: 9pt;
+        .stat-lbl {
+            font-size: 8pt;
             color: #94a3b8;
             text-transform: uppercase;
-            letter-spacing: 1px;
+            letter-spacing: 1.5px;
             margin-bottom: 3px;
         }
         .stat-val {
@@ -155,45 +187,65 @@
             color: #ffffff;
         }
 
-        .footer {
+        /* Footer Section */
+        .footer-bar {
             position: absolute;
-            bottom: 15mm;
-            left: 20mm;
-            right: 20mm;
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-end;
-        }
-        .footer-table {
-            width: 100%;
+            top: 166mm;
+            left: 18mm;
+            width: 261mm;
             border-collapse: collapse;
         }
-        .footer-left {
+        .footer-bar td {
+            vertical-align: middle;
+        }
+        .foot-left {
+            width: 35%;
             text-align: left;
-            width: 33%;
-            vertical-align: bottom;
         }
-        .footer-center {
+        .foot-center {
+            width: 30%;
             text-align: center;
-            width: 34%;
-            vertical-align: bottom;
         }
-        .footer-right {
+        .foot-right {
+            width: 35%;
             text-align: right;
-            width: 33%;
-            vertical-align: bottom;
         }
-        .sign-title {
-            font-size: 9pt;
+        .sign-lbl {
+            font-size: 7.5pt;
             color: #94a3b8;
             text-transform: uppercase;
-            letter-spacing: 1px;
+            letter-spacing: 1.5px;
+            margin-bottom: 3px;
         }
-        .sign-name {
-            font-size: 11pt;
+        .sign-val {
+            font-size: 10.5pt;
             font-weight: 700;
             color: #f8fafc;
-            margin-top: 2px;
+        }
+        .token-text {
+            font-size: 7.5pt;
+            color: #64748b;
+            font-family: monospace;
+            margin-top: 3px;
+        }
+        .finisher-badge-box {
+            display: inline-block;
+            border: 1.5px solid #f59e0b;
+            background: rgba(245, 158, 11, 0.15);
+            padding: 6px 18px;
+            border-radius: 6px;
+        }
+        .finisher-badge-title {
+            font-size: 8.5pt;
+            font-weight: 800;
+            color: #fbbf24;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+        .star-icon {
+            display: inline-block;
+            vertical-align: middle;
+            margin: 0 2px;
         }
     </style>
 </head>
@@ -203,67 +255,85 @@
             <div style="position: absolute; top: 0; left: 0; width: 297mm; height: 210mm; z-index: -10;">
                 <img src="{{ $certBgBase64 }}" style="width: 297mm; height: 210mm; display: block;">
             </div>
+        @else
+            <div class="border-outer"></div>
+            <div class="border-inner"></div>
+            <div class="corner corner-tl"></div>
+            <div class="corner corner-tr"></div>
+            <div class="corner corner-bl"></div>
+            <div class="corner corner-br"></div>
         @endif
 
-        <div class="cert-border"></div>
-        <div class="cert-corner corner-tl"></div>
-        <div class="cert-corner corner-tr"></div>
-        <div class="cert-corner corner-bl"></div>
-        <div class="cert-corner corner-br"></div>
-
-        <div class="header">
-            <span class="brand-badge">Official Finisher Certificate</span>
-            <div class="cert-title">SERTIFIKAT PENGHARGAAN</div>
-            <div class="cert-subtitle">{{ $participant->event?->title ?? 'VIRTUAL RUN CHALLENGE' }}</div>
+        <!-- 1. Header & Title -->
+        <div class="header-box">
+            <div class="badge-pill">Official Finisher Certificate</div>
+            <div class="title-main">SERTIFIKAT PENGHARGAAN</div>
+            <div class="title-sub">{{ $participant->event?->title ?? 'VIRTUAL RUN CHALLENGE' }}</div>
         </div>
 
-        <div class="awarded-to">DIBERIKAN DENGAN BANGGA KEPADA:</div>
-        <div class="recipient-name">{{ $participant->full_name }}</div>
-        <div class="category-text">
-            Telah menyelesaikan tantangan lari kategori <span class="highlight-cat">{{ $participant->category?->name ?? 'Virtual Run' }}</span> dengan semangat, dedikasi, dan pantang menyerah.
+        <!-- 2. Recipient Name & Accomplishment -->
+        <div class="recipient-box">
+            <div class="awarded-label">Diberikan dengan bangga kepada:</div>
+            <div class="participant-name">{{ $participant->full_name }}</div>
+            <div class="desc-text">
+                Telah berhasil menyelesaikan seluruh target tantangan lari kategori <span class="highlight">{{ $participant->category?->name ?? 'Virtual Run' }}</span> ({{ $participant->category?->distance_km ?? 0 }} KM) dengan dedikasi, sportivitas, dan pantang menyerah.
+            </div>
         </div>
 
-        <table class="stats-table">
-            <tr>
-                <td>
-                    <div class="stat-label">NOMOR E-BIB</div>
-                    <div class="stat-val" style="color: #f59e0b;">#{{ $participant->bib_number }}</div>
-                </td>
-                <td>
-                    <div class="stat-label">TOTAL JARAK</div>
-                    <div class="stat-val">{{ number_format((float) $participant->total_distance_km, 2) }} KM</div>
-                </td>
-                <td>
-                    <div class="stat-label">TOTAL DURASI</div>
-                    <div class="stat-val">{{ gmdate('H:i:s', (int) $participant->total_duration_seconds) }}</div>
-                </td>
-                <td>
-                    <div class="stat-label">TANGGAL FINISHER</div>
-                    <div class="stat-val">{{ $participant->finished_at ? $participant->finished_at->format('d M Y') : now()->format('d M Y') }}</div>
-                </td>
-            </tr>
-        </table>
-
-        <div class="footer">
-            <table class="footer-table">
+        <!-- 3. Race Stats -->
+        <div class="stats-box">
+            <table class="stats-table">
                 <tr>
-                    <td class="footer-left">
-                        <div class="sign-title">VERIFIKASI SISTEM</div>
-                        <div class="sign-name">STATUS: OFFICIAL FINISHER</div>
-                        <div style="font-size: 8pt; color: #64748b; margin-top: 2px;">TOKEN: {{ substr($participant->qr_token, 0, 16) }}</div>
+                    <td>
+                        <div class="stat-lbl">NOMOR E-BIB</div>
+                        <div class="stat-val" style="color: #f59e0b;">#{{ $participant->bib_number }}</div>
                     </td>
-                    <td class="footer-center">
-                        <div style="font-size: 24pt;">🏅</div>
-                        <div style="font-size: 8pt; color: #f59e0b; font-weight: bold; letter-spacing: 2px;">FINISHER MEDALIST</div>
+                    <td>
+                        <div class="stat-lbl">TOTAL JARAK</div>
+                        <div class="stat-val">{{ number_format((float) $participant->total_distance_km, 2) }} KM</div>
                     </td>
-                    <td class="footer-right">
-                        <div class="sign-title">RACE DIRECTOR</div>
-                        <div class="sign-name">TIM MANAJEMEN VIRTUAL RUN</div>
-                        <div style="font-size: 8pt; color: #64748b; margin-top: 2px;">{{ config('app.name', 'Virtual Run Platform') }}</div>
+                    <td>
+                        <div class="stat-lbl">TOTAL DURASI</div>
+                        <div class="stat-val">{{ gmdate('H:i:s', (int) $participant->total_duration_seconds) }}</div>
+                    </td>
+                    <td>
+                        <div class="stat-lbl">TANGGAL SELESAI</div>
+                        <div class="stat-val">{{ $finishedDate }}</div>
                     </td>
                 </tr>
             </table>
         </div>
+
+        <!-- 4. Footer & Official Verification -->
+        <table class="footer-bar">
+            <tr>
+                <td class="foot-left">
+                    <div class="sign-lbl">VERIFIKASI SISTEM</div>
+                    <div class="sign-val">STATUS: OFFICIAL FINISHER</div>
+                    <div class="token-text">TOKEN: {{ substr($participant->qr_token, 0, 16) }}</div>
+                </td>
+                <td class="foot-center">
+                    <div class="finisher-badge-box">
+                        <span class="star-icon">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="#fbbf24">
+                                <polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26" />
+                            </svg>
+                        </span>
+                        <span class="finisher-badge-title">OFFICIAL FINISHER</span>
+                        <span class="star-icon">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="#fbbf24">
+                                <polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26" />
+                            </svg>
+                        </span>
+                    </div>
+                </td>
+                <td class="foot-right">
+                    <div class="sign-lbl">RACE DIRECTOR</div>
+                    <div class="sign-val">TIM MANAJEMEN VIRTUAL RUN</div>
+                    <div class="token-text">{{ config('app.name', 'Virtual Run Platform') }}</div>
+                </td>
+            </tr>
+        </table>
     </div>
 </body>
 </html>

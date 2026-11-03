@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\ActivitySubmission;
 use App\Models\Participant;
-use Barryvdh\DomPDF\Facade\Pdf;
+use App\Services\CertificatePdfService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -172,7 +172,7 @@ class PublicSubmissionController extends Controller
     /**
      * Unduh E-Certificate Finisher resmi
      */
-    public function downloadCertificate(string $bibNumber)
+    public function downloadCertificate(string $bibNumber, CertificatePdfService $certificatePdfService)
     {
         $participant = Participant::where('bib_number', $bibNumber)
             ->with(['category.event'])
@@ -182,9 +182,6 @@ class PublicSubmissionController extends Controller
             return back()->with('error', 'Sertifikat hanya dapat diunduh setelah Anda menyelesaikan target jarak kategori.');
         }
 
-        $pdf = Pdf::loadView('pdf.certificate', compact('participant'))
-            ->setPaper('a4', 'landscape');
-
-        return $pdf->download("E-Certificate-Finisher-{$participant->bib_number}.pdf");
+        return $certificatePdfService->downloadCertificate($participant);
     }
 }

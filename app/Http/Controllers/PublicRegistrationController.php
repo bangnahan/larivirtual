@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Jobs\SendMetaCapiPurchaseJob;
 use App\Jobs\SendPaymentPendingEmailJob;
 use App\Jobs\SendTicketEmailJob;
 use App\Models\Event;
@@ -15,6 +14,7 @@ use App\Models\OrderItem;
 use App\Models\OrderShippingAddress;
 use App\Models\Participant;
 use App\Services\BibGeneratorService;
+use App\Services\OrderManagementService;
 use App\Services\SpxShippingService;
 use App\Services\TripayService;
 use Exception;
@@ -195,7 +195,8 @@ class PublicRegistrationController extends Controller
                 'waiver_accepted' => 'accepted',
                 'participants' => 'required|array|min:1|max:10',
                 'participants.*.category_id' => 'required|exists:event_categories,id',
-                'participants.*.jersey_size_id' => 'required|exists:jersey_sizes,id',
+                'participants.*.jersey_size_id' => 'nullable|exists:jersey_sizes,id',
+                'participants.*.jersey_type' => 'nullable|in:short,long,singlet',
                 'participants.*.bib_name' => 'required|string|max:40',
                 'participants.*.gender' => 'required|in:male,female',
                 'participants.*.birth_date' => 'nullable|date',
@@ -208,11 +209,25 @@ class PublicRegistrationController extends Controller
             $buyerEmail = $request->input('buyer_email');
             $buyerPhone = $request->input('buyer_phone');
             $participantsData = $request->input('participants');
+
+            // Validasi: jika kategori menyertakan jersey, ukuran jersey wajib dipilih
+            foreach ($participantsData as $idx => $p) {
+                $cat = EventCategory::find($p['category_id']);
+                if ($cat && $cat->includes_jersey && empty($p['jersey_size_id'])) {
+                    return back()->withInput()->withErrors([
+                        "participants.{$idx}.jersey_size_id" => 'Ukuran jersey wajib dipilih untuk peserta #'.($idx + 1)." ({$cat->name}).",
+                    ]);
+                }
+            }
         } else {
             // Fallback untuk single-participant (backward compatibility)
+            $singleCat = EventCategory::find($request->input('category_id'));
+            $isJerseyReq = $singleCat ? $singleCat->includes_jersey : true;
+
             $request->validate([
                 'category_id' => 'required|exists:event_categories,id',
-                'jersey_size_id' => 'required|exists:jersey_sizes,id',
+                'jersey_size_id' => $isJerseyReq ? 'required|exists:jersey_sizes,id' : 'nullable|exists:jersey_sizes,id',
+                'jersey_type' => 'nullable|in:short,long,singlet',
                 'gender' => 'required|in:male,female',
                 'full_name' => 'nullable|string|max:100',
                 'birth_date' => 'nullable|date',
@@ -230,6 +245,7 @@ class PublicRegistrationController extends Controller
                 [
                     'category_id' => $request->input('category_id'),
                     'jersey_size_id' => $request->input('jersey_size_id'),
+                    'jersey_type' => $request->input('jersey_type', 'short'),
                     'full_name' => $request->input('full_name') ?: $request->input('bib_name'),
                     'gender' => $request->input('gender'),
                     'birth_date' => $request->input('birth_date'),
@@ -262,7 +278,7 @@ class PublicRegistrationController extends Controller
 
                     if (($category->slots_taken + $qtyNeeded) > $category->quota) {
                         $available = max(0, $category->quota - $category->slots_taken);
-                        throw new Exception("Mohon maaf, sisa kuota kategori {$category->name} tersisa {$available} slot (Anda memesan {$qtyNeeded} slot).");
+                        throw new Exception("Mohon maaf, sisa kuota kategori {$category->name} tersisa {$available} tiket (Anda memesan {$qtyNeeded} tiket).");
                     }
 
                     $category->increment('slots_taken', $qtyNeeded);
@@ -270,13 +286,18 @@ class PublicRegistrationController extends Controller
                     $totalTicketsPrice += ($category->getCurrentPrice() * $qtyNeeded);
                 }
 
-                // 2. Kunci dan validasi stok jersey
+                // 2. Kunci dan validasi stok jersey (hanya untuk kategori yang menyertakan jersey)
                 $jerseyCounts = [];
                 foreach ($participantsData as $p) {
-                    $jerseyId = (int) $p['jersey_size_id'];
-                    $jerseyCounts[$jerseyId] = ($jerseyCounts[$jerseyId] ?? 0) + 1;
+                    $catId = (int) $p['category_id'];
+                    $cat = $categoryModels[$catId] ?? null;
+                    if ($cat && $cat->includes_jersey && ! empty($p['jersey_size_id'])) {
+                        $jerseyId = (int) $p['jersey_size_id'];
+                        $jerseyCounts[$jerseyId] = ($jerseyCounts[$jerseyId] ?? 0) + 1;
+                    }
                 }
 
+                $jerseyModels = [];
                 foreach ($jerseyCounts as $jerseyId => $qtyNeeded) {
                     $jersey = JerseySize::where('id', $jerseyId)
                         ->where('event_id', $event->id)
@@ -289,7 +310,46 @@ class PublicRegistrationController extends Controller
                     }
 
                     $jersey->increment('allocated_stock', $qtyNeeded);
+                    $jerseyModels[$jerseyId] = $jersey;
                 }
+
+                // Hitung biaya tambahan upgrade jersey (model lengan dan big size)
+                $totalJerseySurcharges = 0;
+                $processedParticipants = [];
+
+                foreach ($participantsData as $pData) {
+                    $catId = (int) $pData['category_id'];
+                    $cat = $categoryModels[$catId] ?? null;
+
+                    if ($cat && ! $cat->includes_jersey) {
+                        // Kategori tanpa jersey (misal: Medali Only / E-Pass)
+                        $pData['jersey_size_id'] = null;
+                        $pData['jersey_type'] = null;
+                        $pData['jersey_sleeve_surcharge'] = 0;
+                        $pData['jersey_size_surcharge'] = 0;
+                        $pData['jersey_surcharge'] = 0;
+                    } else {
+                        $jerseyId = (int) ($pData['jersey_size_id'] ?? 0);
+                        $jerseyType = $pData['jersey_type'] ?? 'short';
+                        if (! in_array($jerseyType, ['short', 'long', 'singlet'], true)) {
+                            $jerseyType = 'short';
+                        }
+
+                        $sleeveSurcharge = ($jerseyType === 'long') ? 20000 : 0;
+                        $sizeSurcharge = (float) ($jerseyModels[$jerseyId]->surcharge ?? 0);
+                        $pSurcharge = $sleeveSurcharge + $sizeSurcharge;
+
+                        $totalJerseySurcharges += $pSurcharge;
+
+                        $pData['jersey_type'] = $jerseyType;
+                        $pData['jersey_sleeve_surcharge'] = $sleeveSurcharge;
+                        $pData['jersey_size_surcharge'] = $sizeSurcharge;
+                        $pData['jersey_surcharge'] = $pSurcharge;
+                    }
+
+                    $processedParticipants[] = $pData;
+                }
+                $participantsData = $processedParticipants;
 
                 // 3. Kunci dan validasi add-on merchandise yang dipilih
                 $addonRecords = [];
@@ -345,8 +405,8 @@ class PublicRegistrationController extends Controller
                     $shippingCost = $shippingCalculation['shipping_cost'];
                 }
 
-                $platformFee = 5000;
-                $subtotal = $totalTicketsPrice + $totalAddonsPrice;
+                $platformFee = 0;
+                $subtotal = $totalTicketsPrice + $totalAddonsPrice + $totalJerseySurcharges;
                 $grandTotal = $subtotal + $platformFee + $shippingCost;
                 $orderCode = 'JLTX-'.date('Ymd').'-'.strtoupper(Str::random(5));
 
@@ -358,6 +418,7 @@ class PublicRegistrationController extends Controller
                     'customer_phone' => $buyerPhone,
                     'subtotal' => $subtotal,
                     'addons_total' => $totalAddonsPrice,
+                    'jersey_surcharges_total' => $totalJerseySurcharges,
                     'shipping_cost' => $shippingCost,
                     'platform_fee' => $platformFee,
                     'grand_total' => $grandTotal,
@@ -423,7 +484,11 @@ class PublicRegistrationController extends Controller
                     Participant::create([
                         'order_id' => $order->id,
                         'event_category_id' => (int) $pData['category_id'],
-                        'jersey_size_id' => (int) $pData['jersey_size_id'],
+                        'jersey_size_id' => ! empty($pData['jersey_size_id']) ? (int) $pData['jersey_size_id'] : null,
+                        'jersey_type' => $pData['jersey_type'] ?? 'short',
+                        'jersey_sleeve_surcharge' => $pData['jersey_sleeve_surcharge'] ?? 0,
+                        'jersey_size_surcharge' => $pData['jersey_size_surcharge'] ?? 0,
+                        'jersey_surcharge' => $pData['jersey_surcharge'] ?? 0,
                         'full_name' => $fullName,
                         'bib_name' => $safeBibName,
                         'gender' => $pData['gender'],
@@ -494,25 +559,12 @@ class PublicRegistrationController extends Controller
         $order = Order::where('order_code', $orderCode)->firstOrFail();
 
         if ($order->status !== 'paid') {
-            DB::transaction(function () use ($order) {
-                $order->update([
-                    'status' => 'paid',
-                    'paid_at' => now(),
-                ]);
-
-                // Auto-assign BIB
-                if ($order->event?->auto_assign_bib) {
-                    foreach ($order->participants as $participant) {
-                        $this->bibService->autoAssignBib($participant);
-                    }
-                }
-            });
-
-            // Kirim email tiket seketika setelah pembayaran berhasil
-            SendTicketEmailJob::dispatchAfterResponse($order);
-
-            // Kirim event Purchase ke Meta Conversions API (CAPI)
-            SendMetaCapiPurchaseJob::dispatchAfterResponse($order);
+            app(OrderManagementService::class)->updateStatus(
+                order: $order,
+                newStatus: 'paid',
+                reason: 'Simulasi Pelunasan Instan (Tripay Sandbox Mode)',
+                adminName: 'Sandbox Tester'
+            );
         }
 
         return redirect()->route('public.order.show', $orderCode)->with('success', 'Pembayaran Sandbox Berhasil Dikonfirmasi!');

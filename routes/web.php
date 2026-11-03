@@ -1,20 +1,18 @@
 <?php
 
+use App\Http\Controllers\PublicLandingPageController;
 use App\Http\Controllers\PublicLeaderboardController;
 use App\Http\Controllers\PublicRegistrationController;
 use App\Http\Controllers\PublicSubmissionController;
 use App\Http\Controllers\PublicTicketController;
-use App\Models\Event;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', function () {
-    $events = Event::where('status', 'published')
-        ->with(['categories', 'organizer'])
-        ->orderBy('event_start_date', 'asc')
-        ->get();
-
-    return view('public.home', compact('events'));
-})->name('home');
+// Beranda & Landing Page Khusus Bhinneka Tunggal Ika
+Route::get('/', [PublicLandingPageController::class, 'home'])->name('home');
+Route::get('/bhinneka', [PublicLandingPageController::class, 'bhinneka'])->name('landing.bhinneka');
+Route::get('/privacy-policy', [PublicLandingPageController::class, 'privacy'])->name('public.privacy');
+Route::get('/terms-and-conditions', [PublicLandingPageController::class, 'terms'])->name('public.terms');
+Route::get('/contact', [PublicLandingPageController::class, 'contact'])->name('public.contact');
 
 // Pendaftaran Lomba Lari & Checkout Tripay (Multi-Step Wizard ala Jelatix)
 Route::get('/events/{slug}/register', [PublicRegistrationController::class, 'show'])->name('public.register.show');

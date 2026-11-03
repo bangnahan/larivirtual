@@ -3,13 +3,16 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\ActivitySubmissionResource\Pages;
+use App\Jobs\SendCertificateEmailJob;
 use App\Models\ActivitySubmission;
+use App\Services\CertificatePdfService;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ActivitySubmissionResource extends Resource
 {
@@ -81,6 +84,8 @@ class ActivitySubmissionResource extends Resource
                         Forms\Components\FileUpload::make('proof_image_path')
                             ->label('Foto / Screenshot Bukti Lari')
                             ->image()
+                            ->disk('public')
+                            ->visibility('public')
                             ->maxSize(1024)
                             ->directory('submissions/proofs')
                             ->columnSpanFull(),
@@ -152,6 +157,7 @@ class ActivitySubmissionResource extends Resource
 
                 Tables\Columns\ImageColumn::make('proof_image_path')
                     ->label('Bukti')
+                    ->disk('public')
                     ->circular(false)
                     ->square(),
 
@@ -188,9 +194,14 @@ class ActivitySubmissionResource extends Resource
                             'reviewed_by_user_id' => auth()->id(),
                         ]);
 
+                        $record->refresh();
+                        $isFinisher = (bool) $record->participant?->isFinisher();
+
                         Notification::make()
-                            ->title('Aktivitas Berhasil Disetujui')
-                            ->body("Aktivitas pelari {$record->participant?->bib_name} telah disetujui.")
+                            ->title($isFinisher ? 'Aktivitas Disetujui — Finisher Tercapai! 🏅' : 'Aktivitas Berhasil Disetujui')
+                            ->body($isFinisher
+                                ? "Pelari {$record->participant?->bib_name} resmi menyelesaikan target dan menjadi Finisher!"
+                                : "Aktivitas pelari {$record->participant?->bib_name} telah disetujui.")
                             ->success()
                             ->send();
                     }),
@@ -217,6 +228,38 @@ class ActivitySubmissionResource extends Resource
                             ->title('Aktivitas Ditolak')
                             ->body("Aktivitas telah ditolak dengan alasan: {$data['admin_feedback']}")
                             ->warning()
+                            ->send();
+                    }),
+
+                Tables\Actions\Action::make('download_certificate')
+                    ->label('Unduh Sertifikat')
+                    ->icon('heroicon-o-academic-cap')
+                    ->color('success')
+                    ->visible(fn (ActivitySubmission $record): bool => (bool) $record->participant?->isFinisher())
+                    ->action(fn (ActivitySubmission $record, CertificatePdfService $certService): StreamedResponse => response()->streamDownload(function () use ($record, $certService) {
+                        echo $certService->generateCertificatePdf($record->participant);
+                    }, 'E-Certificate-Finisher-'.($record->participant?->bib_number ?: $record->participant_id).'.pdf', ['Content-Type' => 'application/pdf'])
+                    ),
+
+                Tables\Actions\Action::make('resend_certificate')
+                    ->label('Kirim E-Sertifikat')
+                    ->icon('heroicon-o-paper-airplane')
+                    ->color('warning')
+                    ->visible(fn (ActivitySubmission $record): bool => (bool) $record->participant?->isFinisher())
+                    ->form([
+                        Forms\Components\TextInput::make('recipient_email')
+                            ->label('Kirim Sertifikat ke Email')
+                            ->email()
+                            ->default(fn (ActivitySubmission $record) => $record->participant?->email ?: $record->participant?->order?->customer_email)
+                            ->required(),
+                    ])
+                    ->action(function (ActivitySubmission $record, array $data) {
+                        SendCertificateEmailJob::dispatch($record->participant, $data['recipient_email']);
+
+                        Notification::make()
+                            ->title('E-Sertifikat Dijadwalkan')
+                            ->body("E-Sertifikat finisher sedang dikirimkan ke {$data['recipient_email']}")
+                            ->success()
                             ->send();
                     }),
 

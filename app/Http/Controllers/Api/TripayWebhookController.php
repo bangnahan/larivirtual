@@ -3,23 +3,22 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Jobs\SendMetaCapiPurchaseJob;
-use App\Jobs\SendTicketEmailJob;
 use App\Models\Order;
 use App\Models\PaymentLog;
 use App\Services\BibGeneratorService;
+use App\Services\OrderManagementService;
 use App\Services\TripayService;
 use Exception;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class TripayWebhookController extends Controller
 {
     public function __construct(
         protected TripayService $tripayService,
-        protected BibGeneratorService $bibGeneratorService
+        protected BibGeneratorService $bibGeneratorService,
+        protected OrderManagementService $orderManagementService
     ) {}
 
     public function handle(Request $request): JsonResponse
@@ -82,50 +81,26 @@ class TripayWebhookController extends Controller
         }
 
         try {
-            DB::transaction(function () use ($order, $tripayStatus, $data) {
-                // Kunci order untuk mencegah race condition (idempotent)
-                $order = Order::where('id', $order->id)->lockForUpdate()->first();
-
-                if ($tripayStatus === 'PAID') {
-                    if ($order->status === 'paid') {
-                        // Sudah pernah diproses sebelumnya (Idempotent)
-                        return;
-                    }
-
-                    $order->update([
-                        'status' => 'paid',
-                        'paid_at' => now(),
-                        'tripay_reference' => $data['reference'] ?? $order->tripay_reference,
-                    ]);
-
-                    // Auto-assign nomor BIB jika diaktifkan pada event
-                    if ($order->event?->auto_assign_bib) {
-                        foreach ($order->participants as $participant) {
-                            $this->bibGeneratorService->autoAssignBib($participant);
-                        }
-                    }
-
-                    // Dispatch Job pengiriman email E-Ticket via Mailketing
-                    SendTicketEmailJob::dispatchAfterResponse($order);
-
-                    // Dispatch Job kirim event Purchase ke Meta Conversions API (CAPI)
-                    SendMetaCapiPurchaseJob::dispatchAfterResponse($order);
-                } elseif (in_array($tripayStatus, ['EXPIRED', 'FAILED'])) {
-                    if ($order->status === 'pending') {
-                        $order->update(['status' => strtolower($tripayStatus)]);
-
-                        // Kembalikan kuota kategori dan stok jersey yang sempat di-hold
-                        foreach ($order->participants as $participant) {
-                            if ($participant->category) {
-                                $participant->category->decrement('slots_taken', 1);
-                            }
-                            if ($participant->jerseySize) {
-                                $participant->jerseySize->decrement('allocated_stock', 1);
-                            }
-                        }
-                    }
+            if ($tripayStatus === 'PAID') {
+                if (! empty($data['reference'])) {
+                    $order->update(['tripay_reference' => $data['reference']]);
                 }
-            });
+
+                $this->orderManagementService->updateStatus(
+                    order: $order,
+                    newStatus: 'paid',
+                    reason: 'Webhook Tripay terverifikasi (PAID)',
+                    adminName: 'Tripay Payment Gateway',
+                    sendTicketEmail: true
+                );
+            } elseif (in_array($tripayStatus, ['EXPIRED', 'FAILED'], true)) {
+                $this->orderManagementService->updateStatus(
+                    order: $order,
+                    newStatus: strtolower($tripayStatus),
+                    reason: "Webhook Tripay ({$tripayStatus})",
+                    adminName: 'Tripay Payment Gateway'
+                );
+            }
 
             return response()->json(['success' => true]);
         } catch (Exception $e) {

@@ -4,8 +4,10 @@ namespace App\Filament\Organizer\Resources;
 
 use App\Filament\Organizer\Resources\OrderResource\Pages;
 use App\Models\Order;
+use App\Services\OrderManagementService;
 use Filament\Forms;
 use Filament\Forms\Form;
+use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -54,10 +56,12 @@ class OrderResource extends Resource
                 Forms\Components\Select::make('status')
                     ->label('Status Pembayaran')
                     ->options([
-                        'pending' => 'Pending',
-                        'paid' => 'Lunas (Paid)',
-                        'expired' => 'Kadaluarsa (Expired)',
-                        'failed' => 'Gagal (Failed)',
+                        'pending' => '⏳ Menunggu Bayar (Pending)',
+                        'paid' => '✅ Lunas (Paid)',
+                        'cancelled' => '❌ Dibatalkan (Cancelled)',
+                        'refunded' => '💸 Pengembalian Dana (Refunded)',
+                        'expired' => '⏱️ Kadaluarsa (Expired)',
+                        'failed' => '⚠️ Gagal (Failed)',
                     ])
                     ->required(),
             ]);
@@ -96,10 +100,22 @@ class OrderResource extends Resource
                 Tables\Columns\TextColumn::make('status')
                     ->label('Status')
                     ->badge()
+                    ->formatStateUsing(fn (string $state): string => match ($state) {
+                        'paid' => 'Lunas',
+                        'pending' => 'Pending',
+                        'cancelled' => 'Dibatalkan',
+                        'refunded' => 'Refund',
+                        'expired' => 'Expired',
+                        'failed' => 'Gagal',
+                        default => ucfirst($state),
+                    })
                     ->color(fn (string $state): string => match ($state) {
                         'paid' => 'success',
                         'pending' => 'warning',
-                        'expired', 'failed' => 'danger',
+                        'cancelled' => 'danger',
+                        'refunded' => 'info',
+                        'expired' => 'gray',
+                        'failed' => 'danger',
                         default => 'secondary',
                     }),
 
@@ -124,13 +140,63 @@ class OrderResource extends Resource
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('status')
+                    ->label('Status Pembayaran')
                     ->options([
-                        'paid' => 'Lunas',
-                        'pending' => 'Pending',
-                        'expired' => 'Expired',
+                        'paid' => 'Lunas (Paid)',
+                        'pending' => 'Pending (Menunggu Bayar)',
+                        'cancelled' => 'Dibatalkan (Cancelled)',
+                        'refunded' => 'Refund (Pengembalian Dana)',
+                        'expired' => 'Kadaluarsa (Expired)',
+                        'failed' => 'Gagal (Failed)',
                     ]),
             ])
             ->actions([
+                Tables\Actions\Action::make('change_status')
+                    ->label('Ubah Status')
+                    ->icon('heroicon-o-arrows-right-left')
+                    ->color('warning')
+                    ->modalHeading(fn (Order $record) => "Ubah Status Pesanan #{$record->order_code}")
+                    ->modalDescription('Perubahan status ke Lunas akan otomatis menerbitkan nomor BIB & E-Ticket. Perubahan ke Batal/Refund akan mengembalikan kuota.')
+                    ->modalSubmitActionLabel('Simpan Perubahan Status')
+                    ->form([
+                        Forms\Components\Select::make('new_status')
+                            ->label('Pilih Status Baru *')
+                            ->options([
+                                'paid' => '✅ Lunas (Paid) - Alokasi kuota, nomor BIB, dan E-Ticket',
+                                'pending' => '⏳ Menunggu Pembayaran (Pending)',
+                                'cancelled' => '❌ Dibatalkan (Cancelled) - Kembalikan kuota & stok',
+                                'refunded' => '💸 Pengembalian Dana (Refunded) - Kembalikan kuota & stok',
+                                'expired' => '⏱️ Kadaluarsa (Expired)',
+                                'failed' => '⚠️ Gagal (Failed)',
+                            ])
+                            ->default(fn (Order $record) => $record->status)
+                            ->required(),
+                        Forms\Components\Textarea::make('reason')
+                            ->label('Alasan / Catatan Perubahan *')
+                            ->placeholder('Contoh: Peserta membatalkan pendaftaran / pembayaran via transfer manual.')
+                            ->required(),
+                        Forms\Components\Toggle::make('send_ticket_email')
+                            ->label('Kirim E-Ticket ke Email Peserta')
+                            ->helperText('Otomatis kirim email E-Ticket jika status diubah ke Lunas.')
+                            ->default(true)
+                            ->visible(fn (Forms\Get $get) => $get('new_status') === 'paid'),
+                    ])
+                    ->action(function (Order $record, array $data, OrderManagementService $service) {
+                        $service->updateStatus(
+                            order: $record,
+                            newStatus: $data['new_status'],
+                            reason: $data['reason'],
+                            adminName: auth()->user()?->name ?? 'Organizer',
+                            sendTicketEmail: (bool) ($data['send_ticket_email'] ?? true)
+                        );
+
+                        Notification::make()
+                            ->title('Status Transaksi Berhasil Diperbarui')
+                            ->body("Pesanan #{$record->order_code} kini berstatus: ".strtoupper($data['new_status']))
+                            ->success()
+                            ->send();
+                    }),
+
                 Tables\Actions\ViewAction::make(),
                 Tables\Actions\EditAction::make(),
             ])

@@ -88,7 +88,7 @@
             <div class="flex items-center justify-between mb-8">
                 <div>
                     <h2 class="text-xl sm:text-2xl font-extrabold text-slate-900">Event Lari Aktif</h2>
-                    <p class="text-xs sm:text-sm text-slate-500 mt-0.5">Pilih tantangan lari dan amankan slot pendaftaranmu.</p>
+                    <p class="text-xs sm:text-sm text-slate-500 mt-0.5">Pilih tantangan lari dan amankan kuota pendaftaranmu.</p>
                 </div>
             </div>
 
@@ -222,7 +222,10 @@
             <div>
                 &copy; {{ date('Y') }} <strong>Virun Platform</strong>. Hak Cipta Dilindungi.
             </div>
-            <div class="flex items-center gap-4 text-slate-600 font-medium">
+            <div class="flex flex-wrap items-center justify-center sm:justify-end gap-x-4 gap-y-2 text-slate-600 font-medium">
+                <a href="{{ route('public.privacy') }}" class="hover:text-orange-600 transition">Privacy Policy</a>
+                <a href="{{ route('public.terms') }}" class="hover:text-orange-600 transition">Term &amp; Condition</a>
+                <a href="{{ route('public.contact') }}" class="hover:text-orange-600 transition">Contact Us</a>
                 <a href="{{ route('public.ticket.index') }}" class="hover:text-orange-600 transition">Cek E-BIB</a>
                 <a href="{{ route('public.submit.index') }}" class="hover:text-orange-600 transition">Submit Lari</a>
             </div>

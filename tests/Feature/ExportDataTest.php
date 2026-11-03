@@ -232,7 +232,7 @@ class ExportDataTest extends TestCase
         fclose($stream);
 
         $this->assertIsArray($csvLine);
-        // Header: BIB_NUMBER, NAMA_BIB, NAMA_LENGKAP, KATEGORI, JARAK_KM, GENDER, TGL_LAHIR, UKURAN_JERSEY, NO_HP, EMAIL, KODE_ORDER, STATUS_BAYAR
+        // Header: BIB_NUMBER, NAMA_BIB, NAMA_LENGKAP, KATEGORI, JARAK_KM, GENDER, TGL_LAHIR, MODEL_JERSEY, UKURAN_JERSEY, SPESIFIKASI_JERSEY, BIAYA_UPGRADE_JERSEY, NO_HP, EMAIL, KODE_ORDER, STATUS_BAYAR
         $this->assertEquals('1099', $csvLine[0]);
         $this->assertEquals('FAST RUNNER', $csvLine[1]);
         $this->assertEquals('Ahmad Pelari', $csvLine[2]);
@@ -240,12 +240,15 @@ class ExportDataTest extends TestCase
         $this->assertEquals('10.00', $csvLine[4]);
         $this->assertEquals('male', $csvLine[5]);
         $this->assertEquals('1995-04-12', $csvLine[6]);
-        $this->assertEquals('M', $csvLine[7]);
-        $this->assertEquals('081233334444', $csvLine[8]);
-        $this->assertEquals('ahmad@example.com', $csvLine[9]);
-        $this->assertEquals('VR-BIB-001', $csvLine[10]);
-        $this->assertEquals('paid', $csvLine[11]);
-        $this->assertCount(12, $csvLine);
+        $this->assertEquals('Lengan Pendek', $csvLine[7]);
+        $this->assertEquals('M', $csvLine[8]);
+        $this->assertEquals('Lengan Pendek - Size M', $csvLine[9]);
+        $this->assertEquals('0', (string) ((int) $csvLine[10]));
+        $this->assertEquals('081233334444', $csvLine[11]);
+        $this->assertEquals('ahmad@example.com', $csvLine[12]);
+        $this->assertEquals('VR-BIB-001', $csvLine[13]);
+        $this->assertEquals('paid', $csvLine[14]);
+        $this->assertCount(15, $csvLine);
     }
 
     public function test_production_recap_widget_calculates_merchandise_add_ons(): void

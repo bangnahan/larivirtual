@@ -11,7 +11,7 @@ class ReleaseExpiredOrdersCommand extends Command
 {
     protected $signature = 'jelatix:release-expired-orders';
 
-    protected $description = 'Batalkan order tertunda yang melebihi batas waktu (hold kuota) dan pulihkan slot tiket serta ukuran jersey';
+    protected $description = 'Batalkan order tertunda yang melebihi batas waktu (hold kuota) dan pulihkan kuota tiket serta ukuran jersey';
 
     public function handle(): int
     {

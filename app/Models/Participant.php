@@ -22,7 +22,48 @@ class Participant extends Model
         'total_distance_km' => 'decimal:2',
         'total_duration_seconds' => 'integer',
         'finished_at' => 'datetime',
+        'jersey_sleeve_surcharge' => 'decimal:2',
+        'jersey_size_surcharge' => 'decimal:2',
+        'jersey_surcharge' => 'decimal:2',
     ];
+
+    public function getJerseyTypeLabelAttribute(): string
+    {
+        if (! $this->jersey_size_id && $this->category && ! $this->category->includes_jersey) {
+            return 'Tanpa Jersey';
+        }
+
+        return match ($this->jersey_type) {
+            'long' => 'Lengan Panjang',
+            'singlet' => 'Singlet (Tanpa Lengan)',
+            default => 'Lengan Pendek',
+        };
+    }
+
+    public function getJerseyFullSpecAttribute(): string
+    {
+        if (! $this->jersey_size_id && $this->category && ! $this->category->includes_jersey) {
+            return $this->category->includes_medal ? 'Tanpa Jersey (Medali Only)' : 'Tanpa Jersey (E-Pass)';
+        }
+
+        $type = $this->jersey_type_label;
+        $size = $this->jerseySize?->size_name ?: '-';
+
+        return "{$type} - Size {$size}";
+    }
+
+    public function getRacepackSummaryAttribute(): string
+    {
+        $hasJersey = (bool) ($this->category?->includes_jersey ?? true);
+        $hasMedal = (bool) ($this->category?->includes_medal ?? true);
+
+        return match (true) {
+            $hasJersey && $hasMedal => 'Jersey ('.($this->jerseySize?->size_name ?: '-').') + Medali',
+            ! $hasJersey && $hasMedal => 'Medali Only',
+            $hasJersey && ! $hasMedal => 'Jersey Only ('.($this->jerseySize?->size_name ?: '-').')',
+            default => 'E-Pass (Digital Only)',
+        };
+    }
 
     protected static function booted(): void
     {

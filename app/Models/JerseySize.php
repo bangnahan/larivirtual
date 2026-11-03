@@ -17,6 +17,7 @@ class JerseySize extends Model
         'is_unlimited' => 'boolean',
         'stock' => 'integer',
         'allocated_stock' => 'integer',
+        'surcharge' => 'decimal:2',
     ];
 
     public function event(): BelongsTo

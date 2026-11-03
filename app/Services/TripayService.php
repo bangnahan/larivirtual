@@ -393,45 +393,7 @@ class TripayService
         // Generate Signature: HMAC-SHA256(merchant_code + merchant_ref + amount, private_key)
         $signature = hash_hmac('sha256', $this->merchantCode.$merchantRef.$amount, $this->privateKey);
 
-        $orderItems = [];
-        foreach ($order->items as $item) {
-            $orderItems[] = [
-                'sku' => 'CAT-'.$item->event_category_id,
-                'name' => $item->category?->name ?? 'Tiket Lari',
-                'price' => (int) round($item->unit_price),
-                'quantity' => $item->quantity,
-            ];
-        }
-
-        // Tambahkan merchandise / add-on jika ada
-        foreach ($order->addons as $addonItem) {
-            $orderItems[] = [
-                'sku' => 'ADDON-'.($addonItem->event_addon_id ?? $addonItem->id),
-                'name' => 'Add-on: '.$addonItem->addon_name,
-                'price' => (int) round($addonItem->unit_price),
-                'quantity' => $addonItem->quantity,
-            ];
-        }
-
-        // Tambahkan platform fee jika ada
-        if ($order->platform_fee > 0) {
-            $orderItems[] = [
-                'sku' => 'FEE-PLATFORM',
-                'name' => 'Biaya Layanan Platform',
-                'price' => (int) round($order->platform_fee),
-                'quantity' => 1,
-            ];
-        }
-
-        // Tambahkan ongkos kirim SPX jika ada
-        if ($order->shipping_cost > 0) {
-            $orderItems[] = [
-                'sku' => 'SHIPPING-SPX',
-                'name' => 'Ongkos Kirim SPX Regular',
-                'price' => (int) round($order->shipping_cost),
-                'quantity' => 1,
-            ];
-        }
+        $orderItems = $this->prepareOrderItems($order);
 
         $callbackUrl = env('TRIPAY_CALLBACK_URL');
         if (empty($callbackUrl)) {
@@ -554,6 +516,64 @@ class TripayService
             'checkout_url' => $mockCheckoutUrl,
             'expired_time' => $order->expired_at->timestamp,
         ];
+    }
+
+    /**
+     * Siapkan line items untuk transaksi Tripay
+     */
+    public function prepareOrderItems(Order $order): array
+    {
+        $orderItems = [];
+        foreach ($order->items as $item) {
+            $orderItems[] = [
+                'sku' => 'CAT-'.$item->event_category_id,
+                'name' => $item->category?->name ?? 'Tiket Lari',
+                'price' => (int) round($item->unit_price),
+                'quantity' => $item->quantity,
+            ];
+        }
+
+        // Tambahkan merchandise / add-on jika ada
+        foreach ($order->addons as $addonItem) {
+            $orderItems[] = [
+                'sku' => 'ADDON-'.($addonItem->event_addon_id ?? $addonItem->id),
+                'name' => 'Add-on: '.$addonItem->addon_name,
+                'price' => (int) round($addonItem->unit_price),
+                'quantity' => $addonItem->quantity,
+            ];
+        }
+
+        // Tambahkan biaya upgrade jersey (lengan panjang / big size) jika ada
+        if (($order->jersey_surcharges_total ?? 0) > 0) {
+            $orderItems[] = [
+                'sku' => 'SURCHARGE-JERSEY',
+                'name' => 'Upgrade Jersey (Lengan / Big Size)',
+                'price' => (int) round($order->jersey_surcharges_total),
+                'quantity' => 1,
+            ];
+        }
+
+        // Tambahkan platform fee jika ada
+        if ($order->platform_fee > 0) {
+            $orderItems[] = [
+                'sku' => 'FEE-PLATFORM',
+                'name' => 'Biaya Layanan Platform',
+                'price' => (int) round($order->platform_fee),
+                'quantity' => 1,
+            ];
+        }
+
+        // Tambahkan ongkos kirim SPX jika ada
+        if ($order->shipping_cost > 0) {
+            $orderItems[] = [
+                'sku' => 'SHIPPING-SPX',
+                'name' => 'Ongkos Kirim SPX Regular',
+                'price' => (int) round($order->shipping_cost),
+                'quantity' => 1,
+            ];
+        }
+
+        return $orderItems;
     }
 
     /**

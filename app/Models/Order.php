@@ -18,6 +18,7 @@ class Order extends Model
     protected $casts = [
         'subtotal' => 'decimal:2',
         'addons_total' => 'decimal:2',
+        'jersey_surcharges_total' => 'decimal:2',
         'shipping_cost' => 'decimal:2',
         'discount_amount' => 'decimal:2',
         'platform_fee' => 'decimal:2',
@@ -85,6 +86,29 @@ class Order extends Model
     public function isPending(): bool
     {
         return $this->status === 'pending';
+    }
+
+    public function isCancelled(): bool
+    {
+        return $this->status === 'cancelled';
+    }
+
+    public function isRefunded(): bool
+    {
+        return $this->status === 'refunded';
+    }
+
+    public function getStatusLabelAttribute(): string
+    {
+        return match ($this->status) {
+            'paid' => 'Lunas (Paid)',
+            'pending' => 'Menunggu Pembayaran',
+            'cancelled' => 'Dibatalkan',
+            'refunded' => 'Pengembalian Dana (Refund)',
+            'expired' => 'Kadaluarsa',
+            'failed' => 'Gagal',
+            default => ucfirst($this->status ?? '-'),
+        };
     }
 
     /**

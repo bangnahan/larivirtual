@@ -58,6 +58,8 @@ class EventResource extends Resource
                                     ->imageEditor()
                                     ->imageResizeMode('cover')
                                     ->imageCropAspectRatio('16:9')
+                                    ->disk('public')
+                                    ->visibility('public')
                                     ->directory('events/banners')
                                     ->maxSize(3072)
                                     ->helperText('📐 Ukuran Rekomendasi: 1200 x 675 pixel (Rasio aspek 16:9), atau minimal 800 x 450 pixel. Format file: JPG, PNG, atau WebP (Maksimal 3 MB). Gambar ini akan menjadi banner utama pada kartu event di beranda publik serta header halaman pendaftaran.')
@@ -65,11 +67,8 @@ class EventResource extends Resource
 
                                 Forms\Components\Textarea::make('short_description')
                                     ->label('Ringkasan Singkat')
-                                    ->rows(2)
-                                    ->columnSpanFull(),
-
-                                Forms\Components\RichEditor::make('full_description')
-                                    ->label('Deskripsi Lengkap & Info Rute')
+                                    ->rows(3)
+                                    ->helperText('Ringkasan ini akan tampil pada kartu event beranda dan kartu header pendaftaran.')
                                     ->columnSpanFull(),
                             ])->columns(2),
 
@@ -176,7 +175,7 @@ class EventResource extends Resource
                                             ->prefix('Rp')
                                             ->required(),
                                         Forms\Components\TextInput::make('quota')
-                                            ->label('Kuota Slot')
+                                            ->label('Jumlah Kuota')
                                             ->numeric()
                                             ->default(500)
                                             ->required(),
@@ -190,11 +189,19 @@ class EventResource extends Resource
                                             ->label('Nomor Awal BIB')
                                             ->numeric()
                                             ->default(1001),
+                                        Forms\Components\Toggle::make('includes_jersey')
+                                            ->label('Dapat Jersey')
+                                            ->helperText('Matikan jika Medali Only')
+                                            ->default(true),
+                                        Forms\Components\Toggle::make('includes_medal')
+                                            ->label('Dapat Medali')
+                                            ->helperText('Matikan jika Jersey Only')
+                                            ->default(true),
                                         Forms\Components\Toggle::make('is_active')
                                             ->label('Buka')
                                             ->default(true),
                                     ])
-                                    ->columns(7)
+                                    ->columns(9)
                                     ->columnSpanFull()
                                     ->addActionLabel('+ Tambah Kategori Lari'),
                             ]),
@@ -239,6 +246,13 @@ class EventResource extends Resource
                                         Forms\Components\TextInput::make('body_length_cm')
                                             ->label('Panjang Baju (cm)')
                                             ->numeric(),
+
+                                        Forms\Components\TextInput::make('surcharge')
+                                            ->label('Biaya Tambahan (Rp)')
+                                            ->numeric()
+                                            ->prefix('Rp')
+                                            ->default(0)
+                                            ->helperText('Misal: 10000 untuk 4XL/5XL'),
 
                                         Forms\Components\Toggle::make('is_unlimited')
                                             ->label('Stok Unlimited')
@@ -292,6 +306,8 @@ class EventResource extends Resource
                                         Forms\Components\FileUpload::make('image_path')
                                             ->label('Foto Mockup Produk')
                                             ->image()
+                                            ->disk('public')
+                                            ->visibility('public')
                                             ->directory('events/addons')
                                             ->maxSize(2048)
                                             ->columnSpan(2),
@@ -336,6 +352,8 @@ class EventResource extends Resource
                                         Forms\Components\FileUpload::make('ebib_background_path')
                                             ->label('Background Desain Nomor E-BIB')
                                             ->image()
+                                            ->disk('public')
+                                            ->visibility('public')
                                             ->directory('events/ebib-backgrounds')
                                             ->maxSize(3072)
                                             ->helperText('Format: JPG / PNG (Maks. 3 MB). Template nomor dada resmi (rasio 2:1 atau landscape, misal 1200x600 px). Nomor BIB, Nama Pelari, dan Kategori akan dicetak di atas background ini.'),
@@ -343,6 +361,8 @@ class EventResource extends Resource
                                         Forms\Components\FileUpload::make('certificate_background_path')
                                             ->label('Background Desain E-Sertifikat Finisher')
                                             ->image()
+                                            ->disk('public')
+                                            ->visibility('public')
                                             ->directory('events/certificate-backgrounds')
                                             ->maxSize(3072)
                                             ->helperText('Format: JPG / PNG (Maks. 3 MB). Template sertifikat resmi A4 Landscape (297 x 210 mm atau rasio 1.414, misal 2000x1414 px). Data Finisher, Nama, Jarak, Durasi, dan QR Token akan dicetak di atas background ini.'),
@@ -430,6 +450,7 @@ class EventResource extends Resource
             ->columns([
                 Tables\Columns\ImageColumn::make('banner_path')
                     ->label('Cover')
+                    ->disk('public')
                     ->width(64)
                     ->height(40)
                     ->extraImgAttributes(['class' => 'rounded-lg object-cover shadow-sm']),

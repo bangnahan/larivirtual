@@ -48,11 +48,38 @@
     subtotalTickets: {{ (int) $totalPrice }},
     subtotalAddons: {{ (int) ($totalAddonsPrice ?? 0) }},
     shippingCost: 0,
-    platformFee: 5000,
+    platformFee: 0,
     showSizeChart: false,
     selectedPayment: '{{ old('payment_method', 'QRIS') }}',
+    includesJersey: {
+        @foreach($participantSlots as $slot)
+            {{ $slot['index'] }}: {{ ($slot['category']->includes_jersey ?? true) ? 'true' : 'false' }},
+        @endforeach
+    },
+    sleeves: {
+        @foreach($participantSlots as $slot)
+            {{ $slot['index'] }}: '{{ old("participants.{$slot['index']}.jersey_type", "short") }}',
+        @endforeach
+    },
+    sizes: {
+        @foreach($participantSlots as $slot)
+            {{ $slot['index'] }}: '{{ old("participants.{$slot['index']}.jersey_size_id", "") }}',
+        @endforeach
+    },
+    get totalJerseySurcharges() {
+        let total = 0;
+        for (const [idx, sleeve] of Object.entries(this.sleeves)) {
+            if (this.includesJersey[idx] && sleeve === 'long') total += 20000;
+        }
+        for (const [idx, sizeId] of Object.entries(this.sizes)) {
+            if (this.includesJersey[idx] && sizeId && this.sizeSurcharges && this.sizeSurcharges[sizeId]) {
+                total += Number(this.sizeSurcharges[sizeId]);
+            }
+        }
+        return total;
+    },
     get grandTotal() {
-        return this.subtotalTickets + this.subtotalAddons + this.shippingCost + this.platformFee;
+        return this.subtotalTickets + this.subtotalAddons + this.totalJerseySurcharges + this.shippingCost + this.platformFee;
     },
     formatRupiah(num) {
         return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(num);
@@ -288,6 +315,27 @@
                                     <span class="text-xs font-semibold text-slate-600">
                                         {{ $cat->name }}
                                     </span>
+                                    @php
+                                        $catIncludesJersey = (bool) ($cat->includes_jersey ?? true);
+                                        $catIncludesMedal = (bool) ($cat->includes_medal ?? true);
+                                    @endphp
+                                    @if($catIncludesJersey && $catIncludesMedal)
+                                        <span class="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                                            Medali + Jersey
+                                        </span>
+                                    @elseif(!$catIncludesJersey && $catIncludesMedal)
+                                        <span class="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+                                            Medali Only
+                                        </span>
+                                    @elseif($catIncludesJersey && !$catIncludesMedal)
+                                        <span class="text-[10px] font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-200">
+                                            Jersey Only
+                                        </span>
+                                    @else
+                                        <span class="text-[10px] font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200">
+                                            E-Pass Digital
+                                        </span>
+                                    @endif
                                 </div>
                                 <span class="text-xs font-bold text-slate-700 bg-white px-2.5 py-1 rounded-lg border border-slate-200">
                                     Rp {{ number_format($cat->getCurrentPrice(), 0, ',', '.') }}
@@ -297,8 +345,8 @@
                             <!-- Hidden Category ID -->
                             <input type="hidden" name="participants[{{ $i }}][category_id]" value="{{ $cat->id }}">
 
-                            <!-- Form Pelari (Cukup: Nama di E-BIB, Jenis Kelamin, Size Jersey) -->
-                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                            <!-- Form Pelari -->
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                                 <!-- 1. Nama di E-BIB -->
                                 <div>
                                     <label class="block text-xs font-bold text-slate-700 mb-1">
@@ -331,34 +379,156 @@
                                     </select>
                                     <p class="text-[10px] text-slate-500 mt-1">Untuk kategori leaderboard pelari.</p>
                                 </div>
+                            </div>
 
-                                <!-- 3. Ukuran Jersey -->
-                                <div>
-                                    <div class="flex items-center justify-between mb-1">
-                                        <label class="block text-xs font-bold text-slate-700">
-                                            Size Jersey *
-                                        </label>
+                            @php
+                                $catIncludesJersey = (bool) ($cat->includes_jersey ?? true);
+                            @endphp
+
+                            @if($catIncludesJersey)
+                                <!-- Kustomisasi Jersey Finisher Eksklusif -->
+                                <div class="bg-white rounded-xl border border-slate-200/90 p-4 shadow-2xs">
+                                    @if(!$catIncludesMedal)
+                                        <div class="mb-3.5 p-3 bg-indigo-50 border border-indigo-200/80 rounded-xl flex items-start gap-2.5">
+                                            <span class="text-base shrink-0 mt-0.5">👕</span>
+                                            <div>
+                                                <div class="text-xs font-bold text-indigo-950">Paket Jersey Only (Tanpa Medali Fisik)</div>
+                                                <div class="text-[11px] text-indigo-800 leading-relaxed mt-0.5">
+                                                    Kategori ini menyertakan Jersey Finisher resmi, nomor E-BIB, dan E-Sertifikat resmi. <strong>Medali fisik tidak disertakan</strong> dalam paket ini. Silakan tentukan kustomisasi jersey Anda di bawah.
+                                                </div>
+                                            </div>
+                                        </div>
+                                    @endif
+
+                                    <div class="flex items-center justify-between mb-3 pb-2 border-b border-slate-100">
+                                        <div class="flex items-center gap-2">
+                                            <span class="text-base">👕</span>
+                                            <span class="text-xs font-extrabold text-slate-900 tracking-tight">Kustomisasi Jersey Finisher</span>
+                                        </div>
                                         <button 
                                             type="button" 
                                             @click="showSizeChart = true" 
-                                            class="text-[11px] font-bold text-orange-600 hover:text-orange-700 underline cursor-pointer">
-                                            Size Chart 📏
+                                            class="text-[11px] font-bold text-orange-600 hover:text-orange-700 underline cursor-pointer flex items-center gap-1">
+                                            <span>Panduan Ukuran</span>
+                                            <span>📏</span>
                                         </button>
                                     </div>
-                                    <select 
-                                        name="participants[{{ $i }}][jersey_size_id]" 
-                                        required 
-                                        class="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100 transition font-medium">
-                                        <option value="">-- Pilih Ukuran Jersey --</option>
-                                        @foreach($event->jerseySizes as $size)
-                                            <option value="{{ $size->id }}" {{ old("participants.{$i}.jersey_size_id") == $size->id ? 'selected' : '' }}>
-                                                {{ $size->size_name }} (LD: {{ $size->chest_width_cm }} cm, P: {{ $size->body_length_cm }} cm)
-                                            </option>
-                                        @endforeach
-                                    </select>
-                                    <p class="text-[10px] text-slate-500 mt-1">Jersey dryfit eksklusif finisher.</p>
+
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        <!-- A. Pilihan Model Lengan -->
+                                        <div>
+                                            <label class="block text-xs font-bold text-slate-700 mb-1.5">
+                                                Model Lengan *
+                                            </label>
+                                            <div class="grid grid-cols-3 gap-1.5">
+                                                <!-- Pendek -->
+                                                <label 
+                                                    class="flex flex-col items-center justify-center p-2 rounded-xl border cursor-pointer text-center transition"
+                                                    :class="sleeves[{{ $i }}] === 'short' ? 'border-orange-500 bg-orange-50 text-orange-950 font-bold shadow-xs ring-1 ring-orange-400' : 'border-slate-200 bg-slate-50/70 hover:bg-slate-100 text-slate-700 font-medium'">
+                                                    <input 
+                                                        type="radio" 
+                                                        name="participants[{{ $i }}][jersey_type]" 
+                                                        value="short" 
+                                                        x-model="sleeves[{{ $i }}]"
+                                                        class="sr-only">
+                                                    <span class="text-xs">Pendek</span>
+                                                    <span class="text-[10px] text-slate-400 mt-0.5">Standar</span>
+                                                </label>
+
+                                                <!-- Singlet -->
+                                                <label 
+                                                    class="flex flex-col items-center justify-center p-2 rounded-xl border cursor-pointer text-center transition"
+                                                    :class="sleeves[{{ $i }}] === 'singlet' ? 'border-orange-500 bg-orange-50 text-orange-950 font-bold shadow-xs ring-1 ring-orange-400' : 'border-slate-200 bg-slate-50/70 hover:bg-slate-100 text-slate-700 font-medium'">
+                                                    <input 
+                                                        type="radio" 
+                                                        name="participants[{{ $i }}][jersey_type]" 
+                                                        value="singlet" 
+                                                        x-model="sleeves[{{ $i }}]"
+                                                        class="sr-only">
+                                                    <span class="text-xs">Singlet</span>
+                                                    <span class="text-[10px] text-slate-400 mt-0.5">Tanpa Lengan</span>
+                                                </label>
+
+                                                <!-- Panjang (+20rb) -->
+                                                <label 
+                                                    class="flex flex-col items-center justify-center p-2 rounded-xl border cursor-pointer text-center transition relative"
+                                                    :class="sleeves[{{ $i }}] === 'long' ? 'border-orange-500 bg-orange-500 text-white font-bold shadow-xs ring-1 ring-orange-500' : 'border-orange-200 bg-orange-50/50 hover:bg-orange-100/60 text-slate-800 font-medium'">
+                                                    <input 
+                                                        type="radio" 
+                                                        name="participants[{{ $i }}][jersey_type]" 
+                                                        value="long" 
+                                                        x-model="sleeves[{{ $i }}]"
+                                                        class="sr-only">
+                                                    <span class="text-xs">Panjang</span>
+                                                    <span class="text-[10px] mt-0.5 font-bold" :class="sleeves[{{ $i }}] === 'long' ? 'text-orange-100' : 'text-orange-600'">+Rp 20.000</span>
+                                                </label>
+                                            </div>
+                                        </div>
+
+                                        <!-- B. Ukuran Jersey -->
+                                        <div>
+                                            <div class="flex items-center justify-between mb-1.5">
+                                                <label class="block text-xs font-bold text-slate-700">
+                                                    Ukuran Kaos (Size) *
+                                                </label>
+                                                <span x-show="sizeSurcharges && sizeSurcharges[sizes[{{ $i }}]] > 0" class="text-[10px] font-bold text-orange-600 bg-orange-50 border border-orange-200 px-1.5 py-0.5 rounded">
+                                                    Big Size +Rp 10.000
+                                                </span>
+                                            </div>
+                                            <select 
+                                                name="participants[{{ $i }}][jersey_size_id]" 
+                                                x-model="sizes[{{ $i }}]"
+                                                required 
+                                                class="w-full bg-slate-50/70 border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-slate-900 outline-none focus:bg-white focus:border-orange-500 focus:ring-2 focus:ring-orange-100 transition font-medium">
+                                                <option value="">-- Pilih Ukuran Jersey --</option>
+                                                @foreach($event->jerseySizes as $size)
+                                                    @php
+                                                        $surchargeText = $size->surcharge > 0 ? ' (+Rp ' . number_format($size->surcharge, 0, ',', '.') . ')' : '';
+                                                    @endphp
+                                                    <option value="{{ $size->id }}" {{ old("participants.{$i}.jersey_size_id") == $size->id ? 'selected' : '' }}>
+                                                        {{ $size->size_name }} (LD: {{ $size->chest_width_cm }} cm, P: {{ $size->body_length_cm }} cm){{ $surchargeText }}
+                                                    </option>
+                                                @endforeach
+                                            </select>
+                                            <p class="text-[10px] text-slate-500 mt-1">
+                                                Ukuran 4XL &amp; 5XL dikenakan penyesuaian bahan (+Rp 10.000).
+                                            </p>
+                                        </div>
+                                    </div>
                                 </div>
-                            </div>
+                            @else
+                                @if($catIncludesMedal)
+                                    <!-- Paket Tanpa Jersey (Medali Only) -->
+                                    <div class="bg-amber-50/80 rounded-xl border border-amber-200/90 p-4">
+                                        <div class="flex items-start gap-3">
+                                            <div class="w-9 h-9 rounded-lg bg-amber-100 border border-amber-300/60 flex items-center justify-center text-lg shrink-0 mt-0.5">
+                                                🏅
+                                            </div>
+                                            <div>
+                                                <h4 class="text-xs sm:text-sm font-bold text-amber-950">Paket Medali Only (Tanpa Jersey)</h4>
+                                                <p class="text-[11px] sm:text-xs text-amber-800 mt-0.5 leading-relaxed">
+                                                    Kategori ini tidak menyertakan jersey fisik. Anda akan mendapatkan <strong>Medali Finisher Eksklusif Zinc Alloy</strong>, nomor E-BIB, dan E-Sertifikat resmi. Anda tidak perlu memilih ukuran baju.
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                @else
+                                    <!-- Paket Digital Only (E-Pass) -->
+                                    <div class="bg-slate-100 rounded-xl border border-slate-200 p-4">
+                                        <div class="flex items-start gap-3">
+                                            <div class="w-9 h-9 rounded-lg bg-slate-200 flex items-center justify-center text-lg shrink-0 mt-0.5">
+                                                📱
+                                            </div>
+                                            <div>
+                                                <h4 class="text-xs sm:text-sm font-bold text-slate-900">Paket E-Pass (Digital Finisher Only)</h4>
+                                                <p class="text-[11px] sm:text-xs text-slate-600 mt-0.5 leading-relaxed">
+                                                    Kategori digital ini tidak menyertakan medali maupun jersey fisik. Anda akan mendapatkan nomor E-BIB resmi dan E-Sertifikat Finisher digital.
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                @endif
+                            @endif
                         </div>
                     @endforeach
                 </div>
@@ -556,14 +726,14 @@
                             <span>Tiket: <strong class="text-slate-700" x-text="formatRupiah(subtotalTickets)"></strong></span>
                             <span x-show="subtotalAddons > 0">&bull;</span>
                             <span x-show="subtotalAddons > 0">Add-on: <strong class="text-slate-700" x-text="formatRupiah(subtotalAddons)"></strong></span>
+                            <span x-show="totalJerseySurcharges > 0">&bull;</span>
+                            <span x-show="totalJerseySurcharges > 0">Upgrade Jersey: <strong class="text-orange-600 font-bold" x-text="formatRupiah(totalJerseySurcharges)"></strong></span>
                             <span>&bull;</span>
                             <span>SPX: <strong class="text-slate-700" x-text="formatRupiah(shippingCost)"></strong></span>
-                            <span>&bull;</span>
-                            <span>Fee: <strong>Rp 5.000</strong></span>
                         </div>
                         <div class="flex items-baseline gap-1.5">
                             <span class="text-xl sm:text-2xl font-black text-orange-600" x-text="formatRupiah(grandTotal)">
-                                Rp {{ number_format($totalPrice + ($totalAddonsPrice ?? 0) + 5000, 0, ',', '.') }}
+                                Rp {{ number_format($totalPrice + ($totalAddonsPrice ?? 0), 0, ',', '.') }}
                             </span>
                             <span class="text-xs text-slate-500 font-medium">
                                 ({{ $totalCount }} Tiket @if(!empty($totalAddonsCount) && $totalAddonsCount > 0) + {{ $totalAddonsCount }} Add-on @endif)
@@ -603,17 +773,25 @@
                 </button>
             </div>
             
-            <p class="text-xs text-slate-500 mb-4">
-                Ukur lebar dada (dari ketiak kiri ke ketiak kanan) pada kaos yang biasa Anda kenakan dalam posisi mendatar.
-            </p>
+            <div class="mb-4 space-y-2">
+                <p class="text-xs text-slate-500">
+                    Ukur lebar dada (dari ketiak kiri ke ketiak kanan) pada kaos yang biasa Anda kenakan dalam posisi mendatar.
+                </p>
+                <div class="bg-amber-50 border border-amber-200 rounded-xl p-2.5 text-[11px] text-amber-800 space-y-1">
+                    <div><strong>Info Upgrade Jersey:</strong></div>
+                    <div>&bull; <strong>Lengan Panjang:</strong> Tambahan Rp 20.000 / pcs</div>
+                    <div>&bull; <strong>Big Size (4XL &amp; 5XL):</strong> Tambahan Rp 10.000 / pcs</div>
+                </div>
+            </div>
 
             <div class="overflow-x-auto rounded-xl border border-slate-200 mb-4">
                 <table class="w-full text-xs text-left">
                     <thead class="bg-slate-100 text-slate-700 font-bold uppercase text-[10px]">
                         <tr>
                             <th class="py-2.5 px-3">Ukuran</th>
-                            <th class="py-2.5 px-3">Lebar Dada (cm)</th>
-                            <th class="py-2.5 px-3">Panjang Kaos (cm)</th>
+                            <th class="py-2.5 px-3">Lebar Dada</th>
+                            <th class="py-2.5 px-3">Panjang</th>
+                            <th class="py-2.5 px-3">Biaya Tambahan</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100 font-medium text-slate-700">
@@ -622,6 +800,13 @@
                                 <td class="py-2 px-3 font-bold text-slate-900">{{ $size->size_name }}</td>
                                 <td class="py-2 px-3 font-mono">{{ $size->chest_width_cm }} cm</td>
                                 <td class="py-2 px-3 font-mono">{{ $size->body_length_cm }} cm</td>
+                                <td class="py-2 px-3">
+                                    @if($size->surcharge > 0)
+                                        <span class="font-bold text-orange-600 font-mono">+Rp {{ number_format($size->surcharge, 0, ',', '.') }}</span>
+                                    @else
+                                        <span class="text-slate-400">Standar (+Rp 0)</span>
+                                    @endif
+                                </td>
                             </tr>
                         @endforeach
                     </tbody>

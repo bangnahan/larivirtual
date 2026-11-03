@@ -20,6 +20,13 @@ class EventCategory extends Model
         'early_bird_end_date' => 'datetime',
         'reserved_bib_numbers' => 'array',
         'is_active' => 'boolean',
+        'includes_jersey' => 'boolean',
+        'includes_medal' => 'boolean',
+    ];
+
+    protected $attributes = [
+        'includes_jersey' => true,
+        'includes_medal' => true,
     ];
 
     protected static function booted(): void
@@ -40,7 +47,25 @@ class EventCategory extends Model
             if ($category->is_active === null) {
                 $category->is_active = true;
             }
+
+            if ($category->includes_jersey === null) {
+                $category->includes_jersey = true;
+            }
+
+            if ($category->includes_medal === null) {
+                $category->includes_medal = true;
+            }
         });
+    }
+
+    public function getPackageTypeLabelAttribute(): string
+    {
+        return match (true) {
+            $this->includes_jersey && $this->includes_medal => 'Paket Lengkap (Medali + Jersey)',
+            ! $this->includes_jersey && $this->includes_medal => 'Paket Medali Only',
+            $this->includes_jersey && ! $this->includes_medal => 'Paket Jersey Only',
+            default => 'Paket E-Pass (Digital Only)',
+        };
     }
 
     public function event(): BelongsTo
