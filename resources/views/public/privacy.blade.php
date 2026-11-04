@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kebijakan Privasi (Privacy Policy) - Budaya Run Indonesia</title>
-    <meta name="description" content="Kebijakan Privasi resmi Budaya Run Indonesia. Perlindungan data pelari, kerahasiaan informasi pembayaran, dan keamanan pengiriman racepack.">
+    <title>Kebijakan Privasi (Privacy Policy) — LariVirtual.com</title>
+    <meta name="description" content="Kebijakan Privasi resmi LariVirtual.com. Perlindungan data pelari, kerahasiaan informasi pembayaran, dan keamanan pengiriman racepack.">
     
     <!-- Google Fonts: Inter -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -40,10 +40,15 @@
     <header class="sticky top-0 z-50 bg-slate-950/90 backdrop-blur-md border-b border-slate-800">
         <div class="max-w-5xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
             <a href="{{ route('home') }}" class="flex items-center gap-3 group">
-                <img src="{{ asset('images/bhinneka/logo.png') }}" alt="Budaya Run Logo" class="h-9 w-auto object-contain">
-                <div>
-                    <span class="text-sm font-black text-white tracking-tight block">Budaya Run</span>
-                    <span class="text-[10px] text-amber-400 font-semibold tracking-wide">Pelari Berbudi &amp; Berdaya</span>
+                <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-purple-800 to-purple-950 border border-purple-700/80 p-1.5 flex items-center justify-center shadow-lg shadow-purple-950/50 group-hover:scale-105 transition">
+                    <img src="{{ asset('images/larivirtual/logo-icon-white.svg') }}" alt="LariVirtual Icon" class="w-full h-full object-contain">
+                </div>
+                <div class="flex flex-col">
+                    <div class="flex items-baseline">
+                        <span class="text-lg font-black italic tracking-tight text-white">lari<span class="text-orange-500">virtual</span></span>
+                        <span class="text-xs font-extrabold text-purple-400">.com</span>
+                    </div>
+                    <span class="text-[9px] uppercase tracking-widest font-bold text-slate-400 -mt-1">Run Anywhere. Race Together.</span>
                 </div>
             </a>
             <a href="{{ route('home') }}" class="px-3.5 py-1.5 rounded-lg text-xs font-bold text-slate-300 hover:text-white bg-slate-900 hover:bg-slate-800 border border-slate-800 transition flex items-center gap-1.5">
@@ -134,13 +139,13 @@
                         Hak dan Kendali Peserta
                     </h2>
                     <p class="text-slate-400">
-                        Anda berhak untuk memeriksa status data e-BIB, meminta koreksi alamat pengiriman sebelum batas pengiriman racepack dimulai, atau mengajukan pertanyaan terkait privasi data kepada tim Customer Support kami melalui WhatsApp resmi di <strong>0819-1644-4458</strong> atau email <strong>admin@budayarun.com</strong>.
+                        Anda berhak untuk memeriksa status data e-BIB, meminta koreksi alamat pengiriman sebelum batas pengiriman racepack dimulai, atau mengajukan pertanyaan terkait privasi data kepada tim Customer Support kami melalui WhatsApp resmi di <strong>0819-1644-4458</strong> atau email <strong>hi@larivirtual.com</strong>.
                     </p>
                 </section>
             </div>
 
             <div class="mt-10 pt-6 border-t border-slate-800 flex flex-wrap items-center justify-between gap-4">
-                <span class="text-xs text-slate-500">&copy; {{ date('Y') }} Budaya Run Indonesia.</span>
+                <span class="text-xs text-slate-500">&copy; {{ date('Y') }} LariVirtual.com. All Rights Reserved.</span>
                 <div class="flex items-center gap-3">
                     <a href="{{ route('public.terms') }}" class="text-xs text-slate-400 hover:text-white underline underline-offset-2">Terms &amp; Conditions</a>
                     <span class="text-slate-700">•</span>
@@ -151,8 +156,8 @@
     </main>
 
     <!-- Simple Footer -->
-    <footer class="border-t border-slate-900 py-6 text-center text-xs text-slate-600">
-        Budaya Run Indonesia • Pelari yang Berbudi dan Berdaya
+    <footer class="border-t border-slate-900 py-6 text-center text-xs text-slate-500">
+        LariVirtual.com • Run Anywhere. Race Together.
     </footer>
 
 </body>

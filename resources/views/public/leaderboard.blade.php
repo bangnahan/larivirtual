@@ -19,12 +19,14 @@
     <!-- Navbar -->
     <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-xs">
         <div class="max-w-5xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-            <a href="{{ route('home') }}" class="flex items-center gap-2.5 font-extrabold text-lg text-slate-900 tracking-tight">
-                <div class="w-8 h-8 rounded-lg bg-orange-50 border border-orange-200 p-1 flex items-center justify-center">
-                    <span class="text-orange-600 font-black text-sm">VR</span>
+            <a href="{{ route('home') }}" class="flex items-center gap-2.5 group">
+                <div class="w-8 h-8 rounded-lg bg-purple-950 border border-purple-800 p-1 flex items-center justify-center shadow-xs group-hover:scale-105 transition">
+                    <img src="{{ asset('images/larivirtual/logo-icon-white.svg') }}" alt="LariVirtual" class="w-full h-full object-contain">
                 </div>
-                <span>Virun Platform</span>
-                <span class="hidden sm:inline-block text-[10px] uppercase px-2 py-0.5 rounded-full bg-orange-50 text-orange-700 font-bold border border-orange-200">Leaderboard</span>
+                <div class="flex items-baseline">
+                    <span class="text-lg font-black italic tracking-tight text-slate-900">lari<span class="text-orange-600">virtual</span></span>
+                    <span class="text-xs font-extrabold text-purple-700">.com</span>
+                </div>
             </a>
             <div class="flex items-center gap-3 text-xs sm:text-sm font-semibold">
                 <a href="{{ route('public.submit.index') }}" class="text-orange-600 hover:text-orange-700 transition">🏃 Submit Lari</a>
@@ -156,7 +158,7 @@
     <!-- Footer -->
     <footer class="bg-white border-t border-slate-200 py-6 text-center text-xs text-slate-500 mt-auto">
         <div class="max-w-5xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
-            <p>&copy; {{ date('Y') }} Virun Virtual Run Platform. Hak Cipta Dilindungi.</p>
+            <p>&copy; {{ date('Y') }} LariVirtual.com Platform. Hak Cipta Dilindungi.</p>
             <p class="text-slate-400">Didukung oleh Tripay &amp; SPX Express.</p>
         </div>
     </footer>

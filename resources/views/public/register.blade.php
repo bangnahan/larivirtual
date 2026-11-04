@@ -527,7 +527,7 @@
     <!-- Footer -->
     <footer class="bg-white border-t border-slate-200 py-6 mt-auto text-center text-xs text-slate-500">
         <div class="max-w-4xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3">
-            <p>&copy; {{ date('Y') }} {{ $event->title }}. Platform Virtual Run oleh Jelatix &amp; Virun.</p>
+            <p>&copy; {{ date('Y') }} {{ $event->title }}. Platform Virtual Run oleh LariVirtual.com.</p>
             <div class="flex items-center gap-3 text-slate-500">
                 <a href="{{ route('public.privacy') }}" target="_blank" class="hover:text-slate-900 underline">Privacy Policy</a>
                 <span>•</span>

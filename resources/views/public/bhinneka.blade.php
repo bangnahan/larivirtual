@@ -116,11 +116,16 @@
     <header class="sticky top-0 z-40 bg-slate-950/90 backdrop-blur-md border-b border-slate-800/80 transition duration-200">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 sm:h-20 flex items-center justify-between">
             <!-- Brand Logo -->
-            <a href="{{ route('landing.bhinneka') }}" class="flex items-center gap-3 group">
-                <img src="{{ asset('images/bhinneka/logo.png') }}" alt="Budaya Run Logo" class="h-9 sm:h-11 w-auto object-contain transition group-hover:scale-105">
+            <a href="{{ route('home') }}" class="flex items-center gap-3 group">
+                <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-purple-800 to-purple-950 border border-purple-700/80 p-1.5 flex items-center justify-center shadow-lg shadow-purple-950/50 group-hover:scale-105 transition">
+                    <img src="{{ asset('images/larivirtual/logo-icon-white.svg') }}" alt="LariVirtual.com Logo" class="w-full h-full object-contain">
+                </div>
                 <div class="flex flex-col">
-                    <span class="text-[10px] sm:text-xs uppercase tracking-widest font-black text-amber-400">Budaya Run</span>
-                    <span class="text-xs sm:text-sm font-extrabold text-white tracking-tight leading-none">Bhinneka 42.195 KM</span>
+                    <div class="flex items-baseline">
+                        <span class="text-base sm:text-lg font-black italic tracking-tight text-white">lari<span class="text-orange-500">virtual</span></span>
+                        <span class="text-[11px] font-extrabold text-purple-400">.com</span>
+                    </div>
+                    <span class="text-[9px] uppercase tracking-widest font-extrabold text-amber-400 -mt-0.5">Bhinneka 42.195 KM</span>
                 </div>
             </a>
 
@@ -1267,10 +1272,12 @@
                 <!-- Kolom 1 & 2: Profil Brand & Kontak Resmi -->
                 <div class="sm:col-span-2 lg:col-span-2 space-y-4">
                     <div class="flex items-center gap-3">
-                        <img src="{{ asset('images/bhinneka/logo.png') }}" alt="Budaya Run Logo" class="h-10 w-auto object-contain">
+                        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-800 to-purple-950 border border-purple-700/80 p-1.5 flex items-center justify-center shadow-lg shadow-purple-950/50">
+                            <img src="{{ asset('images/larivirtual/logo-icon-white.svg') }}" alt="LariVirtual.com Logo" class="w-full h-full object-contain">
+                        </div>
                         <div>
-                            <span class="text-base font-extrabold text-white tracking-tight block">Budaya Run</span>
-                            <span class="text-xs text-amber-400 font-semibold tracking-wide">Pelari yang Berbudi dan Berdaya</span>
+                            <span class="text-base font-black italic text-white tracking-tight block">lari<span class="text-orange-500">virtual</span>.com</span>
+                            <span class="text-xs text-amber-400 font-semibold tracking-wide">Run Anywhere. Race Together.</span>
                         </div>
                     </div>
                     <p class="text-slate-400 text-xs leading-relaxed max-w-sm">

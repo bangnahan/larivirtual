@@ -197,7 +197,7 @@
     <!-- Footer -->
     <footer class="bg-white border-t border-slate-200 py-6 mt-auto text-center text-xs text-slate-500">
         <div class="max-w-5xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
-            <p>&copy; {{ date('Y') }} Virun Virtual Run Platform. Hak Cipta Dilindungi.</p>
+            <p>&copy; {{ date('Y') }} LariVirtual.com Platform. Hak Cipta Dilindungi.</p>
             <p class="text-slate-400">Didukung oleh Tripay Payment Gateway &amp; SPX Express.</p>
         </div>
     </footer>
