@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cek Status Tiket &amp; E-BIB - Virun Virtual Run</title>
+    <title>Cek Status Tiket &amp; E-BIB — LariVirtual.com</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Plus Jakarta Sans Font -->
@@ -19,12 +19,14 @@
     <!-- Navbar -->
     <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
         <div class="max-w-5xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-            <a href="{{ route('home') }}" class="flex items-center gap-2.5 font-extrabold text-lg text-slate-900 tracking-tight">
-                <div class="w-8 h-8 rounded-lg bg-orange-50 border border-orange-200/60 p-1 flex items-center justify-center shadow-xs">
-                    <span class="text-orange-600 font-black text-sm">VR</span>
+            <a href="{{ route('home') }}" class="flex items-center gap-2.5 group">
+                <div class="w-8 h-8 rounded-lg bg-purple-950 border border-purple-800 p-1 flex items-center justify-center shadow-xs group-hover:scale-105 transition">
+                    <img src="{{ asset('images/larivirtual/logo-icon-white.svg') }}" alt="LariVirtual" class="w-full h-full object-contain">
                 </div>
-                <span>Virun Platform</span>
-                <span class="hidden sm:inline-block text-[10px] uppercase px-2 py-0.5 rounded-full bg-orange-100 text-orange-800 font-bold border border-orange-200">Virtual Run</span>
+                <div class="flex items-baseline">
+                    <span class="text-lg font-black italic tracking-tight text-slate-900">lari<span class="text-orange-600">virtual</span></span>
+                    <span class="text-xs font-extrabold text-purple-700">.com</span>
+                </div>
             </a>
             <div class="flex items-center gap-3 text-xs font-semibold">
                 <a href="{{ route('public.submit.index') }}" class="text-slate-600 hover:text-orange-600 transition">🏃 Submit Lari</a>

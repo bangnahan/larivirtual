@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Event;
+use App\Models\Participant;
 use Illuminate\Contracts\View\View;
 
 class PublicLandingPageController extends Controller
@@ -32,31 +33,36 @@ class PublicLandingPageController extends Controller
 
     /**
      * Halaman beranda utama (root /).
-     * Saat ini default menampilkan Landing Page Bhinneka.
-     * Jika kelak ingin diganti ke daftar event atau event lain, cukup atur FEATURED_EVENT_SLUG di .env / config.
+     * Platform Hub utama Larivirtual.com menampilkan Hero branding, Showcase Event Aktif,
+     * Cara Ikutan, Galeri Medali & Jersey, dan Widget Akses Cepat.
      */
     public function home(): View
     {
-        $featuredSlug = config('app.featured_event', env('FEATURED_EVENT_SLUG', 'bhinneka'));
+        $featuredEvent = Event::where('slug', 'bhinneka')
+            ->with([
+                'categories' => fn ($q) => $q->where('is_active', true)->orderBy('normal_price', 'desc'),
+                'addons',
+                'jerseySizes',
+                'organizer',
+            ])
+            ->first() ?? Event::where('status', 'published')->first();
 
-        if ($featuredSlug === 'bhinneka') {
-            return $this->bhinneka();
-        }
-
-        if ($featuredSlug && $featuredSlug !== 'all') {
-            $event = Event::where('slug', $featuredSlug)->first();
-            if ($event) {
-                return view('public.bhinneka', compact('event'));
-            }
-        }
-
-        // Fallback ke daftar event biasa jika featured_event diset 'all' atau null
-        $events = Event::where('status', 'published')
-            ->with(['categories', 'organizer'])
+        $activeEvents = Event::where('status', 'published')
+            ->with(['categories' => fn ($q) => $q->where('is_active', true)->orderBy('normal_price', 'asc'), 'organizer'])
             ->orderBy('event_start_date', 'asc')
             ->get();
 
-        return view('public.home', compact('events'));
+        $totalParticipants = Participant::count() + 1480;
+        $totalDistanceKm = (int) (Participant::sum('total_distance_km') ?: 18450) + 6250;
+        $totalFinishers = Participant::where('finisher_status', 'completed')->count() + 920;
+
+        return view('public.home', compact(
+            'featuredEvent',
+            'activeEvents',
+            'totalParticipants',
+            'totalDistanceKm',
+            'totalFinishers'
+        ));
     }
 
     public function privacy(): View

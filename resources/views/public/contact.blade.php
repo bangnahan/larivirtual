@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hubungi Kami (Contact Us) - Budaya Run Indonesia</title>
-    <meta name="description" content="Pusat bantuan dan layanan pelanggan Budaya Run Indonesia. Hubungi kami via WhatsApp Admin 081916444458 atau email resmi admin@budayarun.com.">
+    <title>Hubungi Kami (Contact Us) — LariVirtual.com</title>
+    <meta name="description" content="Pusat bantuan dan layanan pelanggan LariVirtual.com. Hubungi kami via WhatsApp Admin 081916444458 atau email resmi hi@larivirtual.com.">
     
     <!-- Google Fonts: Inter -->
     <link rel="preconnect" href="https://fonts.googleapis.com">

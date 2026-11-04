@@ -38,16 +38,15 @@ class BhinnekaLandingPageTest extends TestCase
         $response->assertSee('showContactModal');
     }
 
-    public function test_homepage_serves_bhinneka_landing_page_by_default(): void
+    public function test_homepage_serves_larivirtual_hub_with_featured_bhinneka_event(): void
     {
         $response = $this->get('/');
 
         $response->assertStatus(200);
+        $response->assertSee('Run Anywhere. Race Together.', false);
         $response->assertSee('BHINNEKA TUNGGAL IKA');
-        $response->assertSee('Mari Kita Rayakan Persatuan Indonesia', false);
-        $response->assertSee('Privacy Policy');
-        $response->assertSee('Term &amp; Condition', false);
-        $response->assertSee('Contact Us');
+        $response->assertSee('Cek E-BIB');
+        $response->assertSee('Submit Hasil Lari');
     }
 
     public function test_bhinneka_registration_wizard_page_is_accessible(): void
