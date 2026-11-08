@@ -168,7 +168,10 @@ class SystemUpdatePage extends Page
     protected function runCommand(string $command): string
     {
         try {
-            $process = Process::fromShellCommandline($command, base_path(), null, null, 120);
+            $env = [
+                'GIT_SSH_COMMAND' => 'ssh -o StrictHostKeyChecking=no',
+            ];
+            $process = Process::fromShellCommandline($command, base_path(), $env, null, 120);
             $process->run();
 
             return trim($process->getOutput().$process->getErrorOutput());

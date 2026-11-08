@@ -62,7 +62,7 @@ class DeployWebhookController extends Controller
             $basePath = base_path();
             $commands = [
                 "cd {$basePath}",
-                'git pull origin main 2>&1',
+                'GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=no" git pull origin main 2>&1',
                 'php artisan migrate --force 2>&1',
                 'php artisan optimize 2>&1',
             ];
