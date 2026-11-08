@@ -692,7 +692,6 @@
                         <li><a href="{{ route('public.contact') }}" class="hover:text-brand-orange-400 transition">Hubungi Kami (WhatsApp)</a></li>
                         <li><a href="{{ route('public.terms') }}" class="hover:text-brand-orange-400 transition">Syarat &amp; Ketentuan</a></li>
                         <li><a href="{{ route('public.privacy') }}" class="hover:text-brand-orange-400 transition">Kebijakan Privasi</a></li>
-                        <li><a href="/izinmasukbang" class="text-slate-400 hover:text-slate-200 transition">Portal Panitia</a></li>
                     </ul>
                 </div>
 

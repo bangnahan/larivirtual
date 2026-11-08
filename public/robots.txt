@@ -1,2 +1,19 @@
 User-agent: *
-Disallow:
+Disallow: /admin/
+Disallow: /organizer/
+Disallow: /izinmasukbang/
+Disallow: /api/
+Disallow: /certificate/*/download
+Disallow: /ticket/*/download
+Disallow: /orders/*/simulate
+Disallow: /orders/*/resend-ticket
+
+# Allow crawling of public pages
+Allow: /
+Allow: /bhinneka
+Allow: /events/
+Allow: /cek-tiket
+Allow: /submit
+Allow: /contact
+Allow: /privacy-policy
+Allow: /terms-and-conditions

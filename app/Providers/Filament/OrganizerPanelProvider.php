@@ -5,6 +5,7 @@ namespace App\Providers\Filament;
 use App\Filament\Organizer\Widgets\EventStatsOverview;
 use App\Filament\Organizer\Widgets\JerseyProductionRecapWidget;
 use App\Http\Middleware\FilamentAuthenticate;
+use App\Http\Middleware\PreventIndexing;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
@@ -12,11 +13,13 @@ use Filament\Pages;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
+use Filament\View\PanelsRenderHook;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
+use Illuminate\Support\HtmlString;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 
 class OrganizerPanelProvider extends PanelProvider
@@ -41,7 +44,12 @@ class OrganizerPanelProvider extends PanelProvider
                 EventStatsOverview::class,
                 JerseyProductionRecapWidget::class,
             ])
+            ->renderHook(
+                PanelsRenderHook::HEAD_START,
+                fn (): HtmlString => new HtmlString('<meta name="robots" content="noindex, nofollow, noarchive, nosnippet">')
+            )
             ->middleware([
+                PreventIndexing::class,
                 EncryptCookies::class,
                 AddQueuedCookiesToResponse::class,
                 StartSession::class,
