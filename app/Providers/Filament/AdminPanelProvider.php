@@ -27,7 +27,7 @@ class AdminPanelProvider extends PanelProvider
 {
     public function panel(Panel $panel): Panel
     {
-        $adminPath = trim(env('FILAMENT_ADMIN_PATH', 'izinmasukbang'), '/');
+        $adminPath = trim(env('FILAMENT_ADMIN_PATH', 'adminganteng'), '/');
 
         return $panel
             ->default()
