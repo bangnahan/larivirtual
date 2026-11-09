@@ -77,21 +77,35 @@
 </head>
 <body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col font-sans antialiased selection:bg-brand-orange-500 selection:text-white" x-data="{ mobileMenu: false }">
 
-    <!-- Top Notification Bar -->
-    <div class="bg-gradient-to-r from-brand-purple-950 via-brand-purple-900 to-brand-orange-700 text-white text-[11px] sm:text-xs py-2 px-4 border-b border-brand-purple-800/60">
-        <div class="max-w-7xl mx-auto flex items-center justify-between">
-            <div class="flex items-center gap-2 font-medium">
-                <span class="inline-flex items-center justify-center px-2 py-0.5 rounded-full bg-brand-orange-500 text-white font-extrabold text-[10px] tracking-wider uppercase animate-pulse">
-                    LIVE
-                </span>
-                <span>Pendaftaran <strong>Bhinneka Virtual Run 42K</strong> Masih Dibuka! Lari bisa dicicil s.d 31 Des 2026.</span>
+    @php
+        $topBarEnabled = (bool) \App\Models\SiteSetting::get('top_bar_enabled', true);
+        $topBarBadge = (string) \App\Models\SiteSetting::get('top_bar_badge', 'LIVE');
+        $topBarMessage = (string) \App\Models\SiteSetting::get('top_bar_message', 'Pendaftaran Bhinneka Virtual Run 42K Masih Dibuka! Lari bisa dicicil s.d 31 Des 2026.');
+        $topBarButtonText = (string) \App\Models\SiteSetting::get('top_bar_button_text', 'Cek Nomor E-BIB Anda');
+        $topBarButtonUrl = (string) \App\Models\SiteSetting::get('top_bar_button_url', route('public.ticket.index'));
+    @endphp
+
+    @if($topBarEnabled)
+        <!-- Top Notification Bar -->
+        <div class="bg-gradient-to-r from-brand-purple-950 via-brand-purple-900 to-brand-orange-700 text-white text-[11px] sm:text-xs py-2 px-4 border-b border-brand-purple-800/60">
+            <div class="max-w-7xl mx-auto flex items-center justify-between">
+                <div class="flex items-center gap-2 font-medium">
+                    @if($topBarBadge)
+                        <span class="inline-flex items-center justify-center px-2 py-0.5 rounded-full bg-brand-orange-500 text-white font-extrabold text-[10px] tracking-wider uppercase animate-pulse">
+                            {{ $topBarBadge }}
+                        </span>
+                    @endif
+                    <span>{!! strip_tags($topBarMessage, '<strong><b><em><span><mark>') !!}</span>
+                </div>
+                @if($topBarButtonText)
+                    <a href="{{ $topBarButtonUrl ?: route('public.ticket.index') }}" class="hidden md:inline-flex items-center gap-1 font-bold text-brand-orange-300 hover:text-white transition">
+                        <span>{{ $topBarButtonText }}</span>
+                        <span>&rarr;</span>
+                    </a>
+                @endif
             </div>
-            <a href="{{ route('public.ticket.index') }}" class="hidden md:inline-flex items-center gap-1 font-bold text-brand-orange-300 hover:text-white transition">
-                <span>Cek Nomor E-BIB Anda</span>
-                <span>&rarr;</span>
-            </a>
         </div>
-    </div>
+    @endif
 
     <!-- Navigation Header -->
     <header class="bg-brand-purple-950/90 backdrop-blur-md border-b border-brand-purple-850 sticky top-0 z-50">

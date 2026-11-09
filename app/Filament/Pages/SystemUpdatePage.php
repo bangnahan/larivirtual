@@ -21,7 +21,7 @@ class SystemUpdatePage extends Page
 
     protected static ?string $slug = 'system-update';
 
-    protected static ?string $navigationGroup = 'Pembaruan Sistem';
+    protected static ?string $navigationGroup = 'Pengaturan Sistem';
 
     protected static ?int $navigationSort = 99;
 
