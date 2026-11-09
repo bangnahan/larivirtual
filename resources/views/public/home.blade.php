@@ -360,11 +360,28 @@
                         
                         <!-- Event Banner / Graphic -->
                         <div class="lg:col-span-5 relative min-h-[300px] lg:min-h-full overflow-hidden bg-brand-purple-900">
-                            @if(file_exists(public_path('images/bhinneka/banner.jpg')))
-                                <img src="{{ asset('images/bhinneka/banner.jpg') }}" alt="{{ $featuredEvent->title }}" class="w-full h-full object-cover">
-                            @else
-                                <img src="{{ asset('images/larivirtual/hero-banner-wide.jpg') }}" alt="{{ $featuredEvent->title }}" class="w-full h-full object-cover">
-                            @endif
+                            @php
+                                $featuredBanner = null;
+                                if ($featuredEvent->banner_path) {
+                                    if (file_exists(public_path('storage/' . $featuredEvent->banner_path))) {
+                                        $featuredBanner = asset('storage/' . $featuredEvent->banner_path);
+                                    } elseif (file_exists(public_path($featuredEvent->banner_path))) {
+                                        $featuredBanner = asset($featuredEvent->banner_path);
+                                    } elseif (file_exists(public_path('images/' . $featuredEvent->banner_path))) {
+                                        $featuredBanner = asset('images/' . $featuredEvent->banner_path);
+                                    }
+                                }
+                                if (!$featuredBanner && file_exists(public_path('images/' . $featuredEvent->slug . '/banner.jpg'))) {
+                                    $featuredBanner = asset('images/' . $featuredEvent->slug . '/banner.jpg');
+                                }
+                                if (!$featuredBanner && file_exists(public_path('images/bhinneka/banner.jpg'))) {
+                                    $featuredBanner = asset('images/bhinneka/banner.jpg');
+                                }
+                                if (!$featuredBanner) {
+                                    $featuredBanner = asset('images/larivirtual/hero-banner-wide.jpg');
+                                }
+                            @endphp
+                            <img src="{{ $featuredBanner }}" alt="{{ $featuredEvent->title }}" class="w-full h-full object-cover">
                             <div class="absolute inset-0 bg-gradient-to-t from-brand-purple-950 via-brand-purple-950/40 to-transparent lg:hidden"></div>
                             <div class="absolute top-4 left-4">
                                 <span class="px-3 py-1 rounded-xl bg-brand-orange-500 text-white font-black text-xs uppercase tracking-wider shadow-md">
@@ -375,13 +392,19 @@
 
                         <!-- Event Info & Action -->
                         <div class="lg:col-span-7 p-6 sm:p-8 lg:p-10 flex flex-col justify-between">
+                            @php
+                                $featuredDistances = $featuredEvent->categories->pluck('distance_km')->filter()->unique()->map(fn($d) => (float)$d . 'K')->implode(', ');
+                                if (!$featuredDistances && $featuredEvent->categories->isNotEmpty()) {
+                                    $featuredDistances = $featuredEvent->categories->pluck('name')->implode(', ');
+                                }
+                            @endphp
                             <div class="space-y-4">
-                                <div class="flex items-center gap-3 text-xs text-brand-orange-400 font-extrabold uppercase tracking-wider">
-                                    <span>🏃 42.195 KM (Bisa Dicicil)</span>
+                                <div class="flex flex-wrap items-center gap-2 sm:gap-3 text-xs text-brand-orange-400 font-extrabold uppercase tracking-wider">
+                                    <span>🏃 {{ $featuredDistances ?: '42.195 KM (Bisa Dicicil)' }}</span>
                                     <span>•</span>
-                                    <span>📍 Di Mana Saja</span>
+                                    <span>📍 {{ $featuredEvent->race_location_name ?: 'Di Mana Saja (Virtual)' }}</span>
                                     <span>•</span>
-                                    <span>📅 s.d 31 Des 2026</span>
+                                    <span>📅 s.d {{ $featuredEvent->event_end_date ? $featuredEvent->event_end_date->translatedFormat('d M Y') : '31 Des 2026' }}</span>
                                 </div>
 
                                 <h3 class="text-2xl sm:text-3xl font-black text-white leading-tight">
@@ -389,7 +412,7 @@
                                 </h3>
 
                                 <p class="text-sm text-slate-300 leading-relaxed">
-                                    {{ $featuredEvent->short_description ?? 'Mari kita rayakan persatuan Indonesia melalui event Bhinneka Tunggal Ika Virtual Run 42.195 KM. Lari dapat diselesaikan dalam 1 waktu atau dicicil beberapa kali.' }}
+                                    {{ $featuredEvent->short_description ?: 'Ikuti tantangan lari virtual nasional ini. Bebas pilih rute dan waktu lari, selesaikan dalam sekali jalan atau dicicil hingga periode selesai.' }}
                                 </p>
 
                                 <!-- Categories Preview -->
@@ -426,9 +449,15 @@
                                     <span>Daftar Event Ini Sekarang</span>
                                     <span>&rarr;</span>
                                 </a>
-                                <a href="{{ route('landing.bhinneka') }}" class="w-full sm:w-auto px-6 py-3.5 rounded-xl border border-brand-purple-700 bg-brand-purple-950/60 hover:bg-brand-purple-800 text-slate-200 text-sm font-bold transition text-center">
-                                    Lihat Detail &amp; Race Pack
-                                </a>
+                                @if($featuredEvent->slug === 'bhinneka')
+                                    <a href="{{ route('landing.bhinneka') }}" class="w-full sm:w-auto px-6 py-3.5 rounded-xl border border-brand-purple-700 bg-brand-purple-950/60 hover:bg-brand-purple-800 text-slate-200 text-sm font-bold transition text-center">
+                                        Lihat Detail &amp; Race Pack
+                                    </a>
+                                @else
+                                    <a href="{{ route('public.register.show', $featuredEvent->slug) }}" class="w-full sm:w-auto px-6 py-3.5 rounded-xl border border-brand-purple-700 bg-brand-purple-950/60 hover:bg-brand-purple-800 text-slate-200 text-sm font-bold transition text-center">
+                                        Lihat Detail &amp; Ketentuan
+                                    </a>
+                                @endif
                             </div>
 
                         </div>

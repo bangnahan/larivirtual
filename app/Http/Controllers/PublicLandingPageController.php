@@ -38,14 +38,39 @@ class PublicLandingPageController extends Controller
      */
     public function home(): View
     {
-        $featuredEvent = Event::where('slug', 'bhinneka')
+        $featuredEvent = Event::where('status', 'published')
+            ->where('is_featured', true)
             ->with([
                 'categories' => fn ($q) => $q->where('is_active', true)->orderBy('normal_price', 'desc'),
                 'addons',
                 'jerseySizes',
                 'organizer',
             ])
-            ->first() ?? Event::where('status', 'published')->first();
+            ->first()
+            ?? Event::where('is_featured', true)
+                ->with([
+                    'categories' => fn ($q) => $q->where('is_active', true)->orderBy('normal_price', 'desc'),
+                    'addons',
+                    'jerseySizes',
+                    'organizer',
+                ])
+                ->first()
+            ?? Event::where('slug', 'bhinneka')
+                ->with([
+                    'categories' => fn ($q) => $q->where('is_active', true)->orderBy('normal_price', 'desc'),
+                    'addons',
+                    'jerseySizes',
+                    'organizer',
+                ])
+                ->first()
+            ?? Event::where('status', 'published')
+                ->with([
+                    'categories' => fn ($q) => $q->where('is_active', true)->orderBy('normal_price', 'desc'),
+                    'addons',
+                    'jerseySizes',
+                    'organizer',
+                ])
+                ->first();
 
         $activeEvents = Event::whereIn('status', ['published', 'registration_closed'])
             ->with(['categories' => fn ($q) => $q->where('is_active', true)->orderBy('normal_price', 'asc'), 'organizer'])

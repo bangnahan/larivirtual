@@ -28,6 +28,7 @@ class Event extends Model
         'rpc_end_date' => 'datetime',
         'auto_assign_bib' => 'boolean',
         'is_meta_capi_enabled' => 'boolean',
+        'is_featured' => 'boolean',
     ];
 
     /**
@@ -123,6 +124,12 @@ class Event extends Model
 
     protected static function booted(): void
     {
+        static::saving(function (Event $event): void {
+            if ($event->is_featured) {
+                static::where('id', '!=', $event->id)->update(['is_featured' => false]);
+            }
+        });
+
         static::created(function (Event $event) {
             if ($event->jerseySizes()->count() === 0) {
                 $standardSizes = [

@@ -139,6 +139,11 @@ class EventResource extends Resource
                                         'completed' => 'Lomba Selesai',
                                     ])->default('draft')->required(),
 
+                                Forms\Components\Toggle::make('is_featured')
+                                    ->label('⭐ Sorot di Beranda Utama')
+                                    ->helperText('Jika aktif, event ini akan menjadi sorotan utama (Featured Card) di halaman beranda.')
+                                    ->default(false),
+
                                 Forms\Components\Toggle::make('auto_assign_bib')
                                     ->label('Terbitkan BIB Otomatis Saat Bayar Lunas')
                                     ->helperText('Jika non-aktif, BIB akan di-generate serentak saat registrasi ditutup')
@@ -460,6 +465,22 @@ class EventResource extends Resource
                     ->searchable()
                     ->sortable()
                     ->weight('bold'),
+
+                Tables\Columns\ToggleColumn::make('is_featured')
+                    ->label('⭐ Beranda')
+                    ->onColor('warning')
+                    ->offColor('gray')
+                    ->tooltip('Klik untuk menyorot event ini di beranda utama')
+                    ->afterStateUpdated(function (Event $record, bool $state): void {
+                        if ($state) {
+                            Event::where('id', '!=', $record->id)->update(['is_featured' => false]);
+                            Notification::make()
+                                ->title('Event Sorotan Beranda')
+                                ->body("\"{$record->title}\" kini disorot di halaman utama.")
+                                ->success()
+                                ->send();
+                        }
+                    }),
 
                 Tables\Columns\TextColumn::make('race_location_name')
                     ->label('Lokasi')

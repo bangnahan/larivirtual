@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use App\Models\Event;
+use App\Models\Organizer;
 use Database\Seeders\BhinnekaEventSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -47,6 +49,37 @@ class BhinnekaLandingPageTest extends TestCase
         $response->assertSee('BHINNEKA TUNGGAL IKA');
         $response->assertSee('Cek E-BIB');
         $response->assertSee('Submit Hasil Lari');
+    }
+
+    public function test_featured_event_can_be_selected_and_rendered_on_homepage(): void
+    {
+        $organizer = Organizer::first();
+
+        $newEvent = Event::create([
+            'organizer_id' => $organizer->id,
+            'title' => 'Borobudur Heritage Virtual Marathon',
+            'slug' => 'borobudur-heritage-vm',
+            'status' => 'published',
+            'event_code' => 'BHVM26',
+            'activity_type' => 'running',
+            'submission_mode' => 'multiple',
+            'race_location_name' => 'Magelang, Jawa Tengah',
+            'is_featured' => true,
+            'event_start_date' => now()->addDays(5),
+            'event_end_date' => now()->addDays(30),
+            'registration_open_date' => now()->subDays(5),
+            'registration_close_date' => now()->addDays(20),
+        ]);
+
+        $bhinneka = Event::where('slug', 'bhinneka')->first();
+        $this->assertFalse((bool) $bhinneka->fresh()->is_featured);
+        $this->assertTrue((bool) $newEvent->fresh()->is_featured);
+
+        $response = $this->get('/');
+        $response->assertStatus(200);
+        $response->assertSee('Borobudur Heritage Virtual Marathon');
+        $response->assertSee('Event Virtual Run Lainnya');
+        $response->assertSee('BHINNEKA TUNGGAL IKA');
     }
 
     public function test_bhinneka_registration_wizard_page_is_accessible(): void
