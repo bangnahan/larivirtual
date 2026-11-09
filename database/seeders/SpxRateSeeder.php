@@ -18,19 +18,29 @@ class SpxRateSeeder extends Seeder
             return;
         }
 
-        $sourceDb = '/Users/bangnahan/Ongkir SPX/api/database/spx_shipping.sqlite';
-        if (File::exists($sourceDb) && config('database.default') === 'sqlite') {
-            DB::statement("ATTACH '{$sourceDb}' AS spx_source");
-            DB::statement('INSERT OR IGNORE INTO spx_shipping_rates (
-                origin_city, destination_city, destination_district,
-                hemat_rate_per_kg, hemat_sla_days, regular_rate_per_kg,
-                regular_sla_days, search_keyword, created_at, updated_at
-            ) SELECT 
-                origin_city, destination_city, destination_district,
-                hemat_rate_per_kg, hemat_sla_days, regular_rate_per_kg,
-                regular_sla_days, search_keyword, created_at, updated_at
-            FROM spx_source.spx_rates');
-            DB::statement('DETACH spx_source');
+        $gzPath = database_path('data/spx_rates.json.gz');
+        if (! File::exists($gzPath)) {
+            return;
+        }
+
+        $json = gzdecode(File::get($gzPath));
+        $rows = json_decode($json, true);
+
+        if (! is_array($rows)) {
+            return;
+        }
+
+        $now = now()->toDateTimeString();
+        $chunks = array_chunk($rows, 500);
+
+        foreach ($chunks as $chunk) {
+            foreach ($chunk as &$row) {
+                $row['created_at'] = $now;
+                $row['updated_at'] = $now;
+            }
+            unset($row);
+
+            DB::table('spx_shipping_rates')->insertOrIgnore($chunk);
         }
     }
 }

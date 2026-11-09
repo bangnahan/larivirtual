@@ -235,5 +235,7 @@ class DatabaseSeeder extends Seeder
             'waiver_ip_address' => '127.0.0.1',
             'qr_token' => 'qr_demo_token_bepe_vvip_99',
         ]);
+
+        $this->call(SpxRateSeeder::class);
     }
 }

@@ -11,6 +11,7 @@ use App\Models\Participant;
 use App\Models\SpxShippingRate;
 use App\Services\BibGeneratorService;
 use App\Services\SpxShippingService;
+use Database\Seeders\SpxRateSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -133,6 +134,19 @@ class VirtualRunPlatformTest extends TestCase
         $calcRes->assertStatus(200);
         // 1500 gr dibulatkan jadi 2 kg * 30.000 = 60.000
         $calcRes->assertJsonPath('data.shipping_cost', 60000);
+    }
+
+    public function test_spx_rate_seeder_imports_all_districts_from_gzipped_data(): void
+    {
+        $seeder = new SpxRateSeeder;
+        $seeder->run();
+
+        $this->assertGreaterThanOrEqual(7000, SpxShippingRate::count());
+
+        $response = $this->getJson('/api/shipping/spx/search?q=gambir');
+        $response->assertStatus(200);
+        $response->assertJsonPath('success', true);
+        $this->assertNotEmpty($response->json('data'));
     }
 
     public function test_checkout_with_multi_runners_and_spx_shipping(): void

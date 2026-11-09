@@ -24,6 +24,7 @@ class SpxShippingController extends Controller
 
         return response()->json([
             'success' => true,
+            'status' => 'success',
             'data' => $results,
         ]);
     }
@@ -49,11 +50,13 @@ class SpxShippingController extends Controller
 
             return response()->json([
                 'success' => true,
+                'status' => 'success',
                 'data' => $calculation,
             ]);
         } catch (Exception $e) {
             return response()->json([
                 'success' => false,
+                'status' => 'error',
                 'message' => $e->getMessage(),
             ], 422);
         }

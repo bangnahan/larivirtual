@@ -917,7 +917,7 @@
                 })
                 .then(res => res.json())
                 .then(data => {
-                    if (data.status === 'success') {
+                    if (data.status === 'success' || data.success === true) {
                         const cost = data.data.shipping_cost;
                         const sla = data.data.sla_days;
 
