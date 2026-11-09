@@ -117,13 +117,16 @@ class SystemUpdatePage extends Page
     {
         @set_time_limit(180);
 
+        $php = defined('PHP_BINARY') && PHP_BINARY ? PHP_BINARY : 'php';
+
         $commands = [
             'git fetch origin main 2>&1',
             'git pull origin main 2>&1',
-            'php artisan migrate --force 2>&1',
-            'php artisan optimize:clear 2>&1',
-            'php artisan optimize 2>&1',
-            'php artisan view:clear 2>&1',
+            "{$php} artisan migrate --force 2>&1",
+            "{$php} artisan filament:clear-cached-components 2>&1",
+            "{$php} artisan optimize:clear 2>&1",
+            "{$php} artisan optimize 2>&1",
+            "{$php} artisan view:clear 2>&1",
         ];
 
         $logs = [];

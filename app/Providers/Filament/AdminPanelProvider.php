@@ -3,6 +3,8 @@
 namespace App\Providers\Filament;
 
 use App\Filament\Pages\Auth\Login;
+use App\Filament\Pages\SiteSettingsPage;
+use App\Filament\Pages\SystemUpdatePage;
 use App\Filament\Widgets\EventStatsOverview;
 use App\Filament\Widgets\JerseyProductionRecapWidget;
 use App\Http\Middleware\FilamentAuthenticate;
@@ -42,12 +44,15 @@ class AdminPanelProvider extends PanelProvider
             ->navigationGroups([
                 'Virtual Run & Event',
                 'Pendaftaran & Peserta',
+                'Pengaturan Sistem',
                 'Pembaruan Sistem',
             ])
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')
             ->pages([
                 Pages\Dashboard::class,
+                SiteSettingsPage::class,
+                SystemUpdatePage::class,
             ])
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\\Filament\\Widgets')
             ->widgets([

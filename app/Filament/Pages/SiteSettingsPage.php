@@ -35,7 +35,9 @@ class SiteSettingsPage extends Page implements HasForms
 
     public static function canAccess(): bool
     {
-        return auth()->user()?->isSuperAdmin() ?? false;
+        $user = auth()->user();
+
+        return $user && ($user->isSuperAdmin() || $user->role === 'admin');
     }
 
     public function mount(): void
