@@ -590,6 +590,10 @@ class PublicRegistrationController extends Controller
      */
     public function simulatePay(string $orderCode): RedirectResponse
     {
+        if (config('tripay.mode') !== 'sandbox' && ! app()->environment('local', 'testing')) {
+            abort(403, 'Simulasi pelunasan hanya tersedia pada mode sandbox.');
+        }
+
         $order = Order::where('order_code', $orderCode)->firstOrFail();
 
         if ($order->status !== 'paid') {
