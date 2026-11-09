@@ -397,12 +397,17 @@
                                 if (!$featuredDistances && $featuredEvent->categories->isNotEmpty()) {
                                     $featuredDistances = $featuredEvent->categories->pluck('name')->implode(', ');
                                 }
+                                $featuredOrganizer = $featuredEvent->organizer_name ?: $featuredEvent->organizer?->name;
                             @endphp
                             <div class="space-y-4">
                                 <div class="flex flex-wrap items-center gap-2 sm:gap-3 text-xs text-brand-orange-400 font-extrabold uppercase tracking-wider">
                                     <span>🏃 {{ $featuredDistances ?: '42.195 KM (Bisa Dicicil)' }}</span>
                                     <span>•</span>
                                     <span>📍 {{ $featuredEvent->race_location_name ?: 'Di Mana Saja (Virtual)' }}</span>
+                                    @if($featuredOrganizer)
+                                        <span>•</span>
+                                        <span>🏢 {{ $featuredOrganizer }}</span>
+                                    @endif
                                     <span>•</span>
                                     <span>📅 s.d {{ $featuredEvent->event_end_date ? $featuredEvent->event_end_date->translatedFormat('d M Y') : '31 Des 2026' }}</span>
                                 </div>
@@ -527,10 +532,13 @@
                                         @endif
                                     </div>
 
-                                    @if($ev->organizer)
+                                    @php
+                                        $evOrganizer = $ev->organizer_name ?: $ev->organizer?->name;
+                                    @endphp
+                                    @if($evOrganizer)
                                         <div class="absolute bottom-3 left-3 text-[11px] font-bold text-slate-300 flex items-center gap-1.5 drop-shadow">
-                                            <span>📍</span>
-                                            <span>{{ $ev->organizer->name }}</span>
+                                            <span>🏢</span>
+                                            <span>{{ $evOrganizer }}</span>
                                         </div>
                                     @endif
                                 </div>

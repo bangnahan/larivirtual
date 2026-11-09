@@ -52,6 +52,15 @@ class EventResource extends Resource
                                     ->required()
                                     ->unique(Event::class, 'slug', ignoreRecord: true),
 
+                                Forms\Components\TextInput::make('organizer_name')
+                                    ->label('Nama Organizer / Penyelenggara')
+                                    ->placeholder('Contoh: Budaya Run Indonesia, Komunitas Lari Nusantara, dll')
+                                    ->helperText('Ketik nama organizer/penyelenggara acara ini. Teks ini akan ditampilkan pada informasi publik event.')
+                                    ->datalist(fn () => Organizer::pluck('name')->filter()->unique()->toArray())
+                                    ->default(fn () => Organizer::first()?->name ?? 'LariVirtual')
+                                    ->maxLength(255)
+                                    ->columnSpanFull(),
+
                                 Forms\Components\FileUpload::make('banner_path')
                                     ->label('Gambar Cover / Banner Event')
                                     ->image()
@@ -481,6 +490,15 @@ class EventResource extends Resource
                                 ->send();
                         }
                     }),
+
+                Tables\Columns\TextColumn::make('organizer_display_name')
+                    ->label('Organizer')
+                    ->searchable(query: function ($query, string $search) {
+                        $query->where('organizer_name', 'like', "%{$search}%")
+                            ->orWhereHas('organizer', fn ($q) => $q->where('name', 'like', "%{$search}%"));
+                    })
+                    ->sortable(['organizer_name'])
+                    ->toggleable(),
 
                 Tables\Columns\TextColumn::make('race_location_name')
                     ->label('Lokasi')

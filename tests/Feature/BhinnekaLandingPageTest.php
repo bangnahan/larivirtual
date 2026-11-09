@@ -59,6 +59,7 @@ class BhinnekaLandingPageTest extends TestCase
             'organizer_id' => $organizer->id,
             'title' => 'Borobudur Heritage Virtual Marathon',
             'slug' => 'borobudur-heritage-vm',
+            'organizer_name' => 'Borobudur Marathon Club',
             'status' => 'published',
             'event_code' => 'BHVM26',
             'activity_type' => 'running',
@@ -78,6 +79,7 @@ class BhinnekaLandingPageTest extends TestCase
         $response = $this->get('/');
         $response->assertStatus(200);
         $response->assertSee('Borobudur Heritage Virtual Marathon');
+        $response->assertSee('Borobudur Marathon Club');
         $response->assertSee('Event Virtual Run Lainnya');
         $response->assertSee('BHINNEKA TUNGGAL IKA');
     }

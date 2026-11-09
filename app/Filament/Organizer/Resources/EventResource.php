@@ -4,6 +4,7 @@ namespace App\Filament\Organizer\Resources;
 
 use App\Filament\Organizer\Resources\EventResource\Pages;
 use App\Models\Event;
+use App\Models\Organizer;
 use App\Services\MetaCapiService;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -58,6 +59,14 @@ class EventResource extends Resource
                                     ->label('URL Slug')
                                     ->required()
                                     ->unique(Event::class, 'slug', ignoreRecord: true),
+
+                                Forms\Components\TextInput::make('organizer_name')
+                                    ->label('Nama Organizer / Penyelenggara (Teks Publik)')
+                                    ->placeholder('Contoh: Budaya Run Indonesia, Komunitas Lari Nusantara, dll')
+                                    ->helperText('Nama penyelenggara yang akan ditampilkan pada halaman publik event.')
+                                    ->datalist(fn () => Organizer::pluck('name')->filter()->unique()->toArray())
+                                    ->maxLength(255)
+                                    ->columnSpanFull(),
 
                                 Forms\Components\FileUpload::make('banner_path')
                                     ->label('Gambar Cover / Banner Event')

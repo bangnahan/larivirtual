@@ -122,11 +122,27 @@ class Event extends Model
         return $this->belongsTo(Organizer::class);
     }
 
+    /**
+     * Nama penyelenggara yang ditampilkan ke publik
+     */
+    public function getOrganizerDisplayNameAttribute(): string
+    {
+        return $this->organizer_name ?: ($this->organizer?->name ?? 'LariVirtual Organizer');
+    }
+
     protected static function booted(): void
     {
         static::saving(function (Event $event): void {
             if ($event->is_featured) {
                 static::where('id', '!=', $event->id)->update(['is_featured' => false]);
+            }
+
+            if (empty($event->organizer_id)) {
+                $event->organizer_id = Organizer::first()?->id ?? 1;
+            }
+
+            if (empty($event->organizer_name) && $event->organizer_id) {
+                $event->organizer_name = Organizer::find($event->organizer_id)?->name;
             }
         });
 
