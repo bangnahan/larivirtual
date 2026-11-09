@@ -47,8 +47,9 @@ class PublicLandingPageController extends Controller
             ])
             ->first() ?? Event::where('status', 'published')->first();
 
-        $activeEvents = Event::where('status', 'published')
+        $activeEvents = Event::whereIn('status', ['published', 'registration_closed'])
             ->with(['categories' => fn ($q) => $q->where('is_active', true)->orderBy('normal_price', 'asc'), 'organizer'])
+            ->orderByRaw("CASE WHEN status = 'published' THEN 1 ELSE 2 END")
             ->orderBy('event_start_date', 'asc')
             ->get();
 

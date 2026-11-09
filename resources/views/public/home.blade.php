@@ -436,6 +436,113 @@
                 </div>
             @endif
 
+            <!-- OTHER ACTIVE VIRTUAL RUN EVENTS -->
+            @php
+                $otherEvents = $activeEvents->where('id', '!=', $featuredEvent?->id);
+            @endphp
+
+            @if($otherEvents->isNotEmpty())
+                <div class="mt-16">
+                    <div class="flex flex-col sm:flex-row sm:items-end justify-between mb-8 gap-3 border-b border-brand-purple-800/60 pb-4">
+                        <div>
+                            <span class="text-xs font-black uppercase tracking-wider text-brand-orange-400">Jelajahi Pilihan Tantangan</span>
+                            <h3 class="text-2xl sm:text-3xl font-black text-white tracking-tight">Event Virtual Run Lainnya</h3>
+                        </div>
+                        <span class="text-xs font-bold text-slate-400 bg-brand-purple-900/60 border border-brand-purple-800 px-3 py-1.5 rounded-full self-start sm:self-auto">
+                            {{ $otherEvents->count() }} Event Tersedia
+                        </span>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        @foreach($otherEvents as $ev)
+                            @php
+                                $cardBanner = null;
+                                if ($ev->banner_path) {
+                                    if (file_exists(public_path('storage/' . $ev->banner_path))) {
+                                        $cardBanner = asset('storage/' . $ev->banner_path);
+                                    } elseif (file_exists(public_path($ev->banner_path))) {
+                                        $cardBanner = asset($ev->banner_path);
+                                    } elseif (file_exists(public_path('images/' . $ev->banner_path))) {
+                                        $cardBanner = asset('images/' . $ev->banner_path);
+                                    }
+                                }
+                                if (!$cardBanner) {
+                                    $cardBanner = asset('images/larivirtual/hero-banner-wide.jpg');
+                                }
+                                $minPrice = $ev->categories->min('normal_price') ?? 0;
+                                $distances = $ev->categories->pluck('distance_km')->filter()->unique()->map(fn($d) => (float)$d . 'K')->implode(', ');
+                            @endphp
+                            <div class="rounded-3xl bg-brand-purple-950/90 border border-brand-purple-800/80 hover:border-brand-orange-500/50 transition duration-300 overflow-hidden flex flex-col group shadow-xl hover:shadow-2xl hover:shadow-brand-orange-500/10">
+                                
+                                <!-- Card Image -->
+                                <div class="relative h-48 bg-brand-purple-900 overflow-hidden">
+                                    <img src="{{ $cardBanner }}" alt="{{ $ev->title }}" class="w-full h-full object-cover group-hover:scale-105 transition duration-500">
+                                    <div class="absolute inset-0 bg-gradient-to-t from-brand-purple-950 via-transparent to-black/30"></div>
+                                    
+                                    <!-- Badges -->
+                                    <div class="absolute top-3 left-3 flex flex-wrap gap-1.5">
+                                        @if($ev->status === 'published')
+                                            <span class="px-2.5 py-1 rounded-lg bg-brand-orange-500 text-white text-[10px] font-black uppercase tracking-wider shadow">
+                                                Buka Pendaftaran
+                                            </span>
+                                        @elseif($ev->status === 'registration_closed')
+                                            <span class="px-2.5 py-1 rounded-lg bg-slate-700 text-slate-200 text-[10px] font-bold uppercase tracking-wider shadow">
+                                                Ditutup
+                                            </span>
+                                        @endif
+
+                                        @if($distances)
+                                            <span class="px-2.5 py-1 rounded-lg bg-brand-purple-900/90 text-brand-orange-300 border border-brand-purple-700 text-[10px] font-extrabold backdrop-blur-xs">
+                                                {{ $distances }}
+                                            </span>
+                                        @endif
+                                    </div>
+
+                                    @if($ev->organizer)
+                                        <div class="absolute bottom-3 left-3 text-[11px] font-bold text-slate-300 flex items-center gap-1.5 drop-shadow">
+                                            <span>📍</span>
+                                            <span>{{ $ev->organizer->name }}</span>
+                                        </div>
+                                    @endif
+                                </div>
+
+                                <!-- Card Body -->
+                                <div class="p-5 flex-1 flex flex-col justify-between space-y-4">
+                                    <div>
+                                        <h4 class="text-lg font-black text-white group-hover:text-brand-orange-400 transition leading-snug line-clamp-2">
+                                            {{ $ev->title }}
+                                        </h4>
+                                        <p class="text-xs text-slate-400 mt-2 line-clamp-2 leading-relaxed">
+                                            {{ $ev->short_description ?? 'Selesaikan tantangan virtual run seru ini dari mana saja dan kapan saja.' }}
+                                        </p>
+                                    </div>
+
+                                    <!-- Price & CTA -->
+                                    <div class="pt-4 border-t border-brand-purple-900 flex items-center justify-between">
+                                        <div>
+                                            <div class="text-[10px] text-slate-400 font-bold uppercase">Biaya Pendaftaran</div>
+                                            <div class="text-sm font-black text-brand-orange-400">
+                                                @if($minPrice > 0)
+                                                    Mulai Rp {{ number_format($minPrice, 0, ',', '.') }}
+                                                @else
+                                                    Gratis
+                                                @endif
+                                            </div>
+                                        </div>
+
+                                        <a href="{{ route('public.register.show', $ev->slug) }}" class="px-4 py-2.5 rounded-xl bg-gradient-to-r from-brand-orange-500 to-brand-orange-600 hover:from-brand-orange-400 hover:to-brand-orange-500 text-white text-xs font-black shadow-md shadow-brand-orange-600/30 active:scale-95 transition flex items-center gap-1.5">
+                                            <span>Daftar</span>
+                                            <span>&rarr;</span>
+                                        </a>
+                                    </div>
+                                </div>
+
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+            @endif
+
         </div>
     </section>
 
