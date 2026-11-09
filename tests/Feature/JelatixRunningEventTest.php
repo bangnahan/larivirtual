@@ -391,10 +391,10 @@ class JelatixRunningEventTest extends TestCase
 
         Http::assertSent(function ($request) {
             return $request->url() === 'https://api.mailketing.co.id/api/v1/send'
-                && $request['from_email'] === 'hi@jelatix.com'
+                && $request['from_email'] === config('mailketing.from_email')
                 && $request['recipient'] === 'runner@jelatix.com'
                 && $request['subject'] === 'Tiket Lari Anda'
-                && $request['api_token'] === '308b31d3313311776744479fa8fd7eb3'
+                && $request['api_token'] === config('mailketing.api_token')
                 && $request['attach1'] === 'https://jelatix.com/ticket/download';
         });
     }
