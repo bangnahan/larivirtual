@@ -206,6 +206,12 @@
         <form action="{{ route('public.register.checkout', $event->slug) }}" method="POST" id="checkoutForm">
             @csrf
 
+            @if(!empty($selectedTickets))
+                @foreach($selectedTickets as $catId => $data)
+                    <input type="hidden" name="tickets[{{ $catId }}]" value="{{ $data['qty'] }}">
+                @endforeach
+            @endif
+
             @if(!empty($selectedAddons))
                 @foreach($selectedAddons as $addonId => $data)
                     <input type="hidden" name="addons[{{ $addonId }}]" value="{{ $data['qty'] }}">

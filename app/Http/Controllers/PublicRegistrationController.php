@@ -22,6 +22,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 
 class PublicRegistrationController extends Controller
@@ -63,14 +64,26 @@ class PublicRegistrationController extends Controller
             ])
             ->firstOrFail();
 
-        $tickets = $request->input('tickets');
-        $addons = $request->input('addons');
+        $tickets = $request->input('tickets') ?: old('tickets');
+        $addons = $request->input('addons') ?: old('addons');
 
-        // Jika request berupa GET (misalnya setelah validation error / reload), baca dari session
-        if (empty($tickets) && $request->isMethod('get')) {
+        // Jika tiket belum ditemukan (misal reload GET atau redirect dari checkout error), baca dari session
+        if (empty($tickets)) {
             $tickets = session()->get("event_{$event->id}_tickets", []);
         }
-        if ($addons === null && $request->isMethod('get')) {
+
+        // Jika session kosong tapi ada old input peserta, rekontruksi daftar tiket dari input peserta
+        if (empty($tickets) && is_array(old('participants'))) {
+            $tickets = [];
+            foreach (old('participants') as $p) {
+                $cId = $p['category_id'] ?? null;
+                if ($cId) {
+                    $tickets[$cId] = ($tickets[$cId] ?? 0) + 1;
+                }
+            }
+        }
+
+        if ($addons === null) {
             $addons = session()->get("event_{$event->id}_addons", []);
         }
 
@@ -185,9 +198,8 @@ class PublicRegistrationController extends Controller
         $event = Event::where('slug', $slug)->firstOrFail();
 
         // Cek apakah payload bertipe multi-peserta (array `participants`) atau single-peserta
-        // Cek apakah payload bertipe multi-peserta (array `participants`) atau single-peserta
         if ($request->has('participants') && is_array($request->input('participants'))) {
-            $request->validate([
+            $validator = Validator::make($request->all(), [
                 'buyer_name' => 'required|string|max:100',
                 'buyer_email' => 'required|email|max:100',
                 'buyer_phone' => 'required|string|max:20',
@@ -203,7 +215,19 @@ class PublicRegistrationController extends Controller
                 'participants.*.phone' => 'nullable|string|max:20',
                 'participants.*.email' => 'nullable|email|max:100',
                 'participants.*.custom_fields' => 'nullable|array',
+            ], [
+                'waiver_accepted.accepted' => 'Anda harus menyetujui pernyataan pelepasan tanggung jawab (Waiver) untuk melanjutkan.',
+                'payment_method.required' => 'Silakan pilih salah satu metode pembayaran yang tersedia.',
+                'buyer_name.required' => 'Nama lengkap pemesan wajib diisi.',
+                'buyer_email.required' => 'Email pemesan wajib diisi untuk pengiriman e-ticket.',
+                'buyer_phone.required' => 'Nomor WhatsApp pemesan wajib diisi.',
             ]);
+
+            if ($validator->fails()) {
+                return redirect()->route('public.register.participants', $slug)
+                    ->withInput()
+                    ->withErrors($validator);
+            }
 
             $buyerName = $request->input('buyer_name');
             $buyerEmail = $request->input('buyer_email');
@@ -214,9 +238,11 @@ class PublicRegistrationController extends Controller
             foreach ($participantsData as $idx => $p) {
                 $cat = EventCategory::find($p['category_id']);
                 if ($cat && $cat->includes_jersey && empty($p['jersey_size_id'])) {
-                    return back()->withInput()->withErrors([
-                        "participants.{$idx}.jersey_size_id" => 'Ukuran jersey wajib dipilih untuk peserta #'.($idx + 1)." ({$cat->name}).",
-                    ]);
+                    return redirect()->route('public.register.participants', $slug)
+                        ->withInput()
+                        ->withErrors([
+                            "participants.{$idx}.jersey_size_id" => 'Ukuran jersey wajib dipilih untuk peserta #'.($idx + 1)." ({$cat->name}).",
+                        ]);
                 }
             }
         } else {
@@ -224,7 +250,7 @@ class PublicRegistrationController extends Controller
             $singleCat = EventCategory::find($request->input('category_id'));
             $isJerseyReq = $singleCat ? $singleCat->includes_jersey : true;
 
-            $request->validate([
+            $validator = Validator::make($request->all(), [
                 'category_id' => 'required|exists:event_categories,id',
                 'jersey_size_id' => $isJerseyReq ? 'required|exists:jersey_sizes,id' : 'nullable|exists:jersey_sizes,id',
                 'jersey_type' => 'nullable|in:short,long,singlet',
@@ -237,6 +263,12 @@ class PublicRegistrationController extends Controller
                 'waiver_accepted' => 'accepted',
                 'custom_fields' => 'nullable|array',
             ]);
+
+            if ($validator->fails()) {
+                return redirect()->route('public.register.participants', $slug)
+                    ->withInput()
+                    ->withErrors($validator);
+            }
 
             $buyerName = $request->input('full_name') ?: ($request->input('bib_name') ?: 'Buyer');
             $buyerEmail = $request->input('email') ?: 'buyer@example.com';
@@ -502,14 +534,14 @@ class PublicRegistrationController extends Controller
                     ]);
                 }
 
-                // Hapus data session pemesanan setelah sukses
-                session()->forget(["event_{$event->id}_tickets", "event_{$event->id}_addons"]);
-
                 return $order;
             });
 
             // Request transaksi ke Tripay
             $tripayData = $this->tripayService->createTransaction($order, $request->input('payment_method'));
+
+            // Hapus data session pemesanan HANYA SETELAH request ke Tripay sukses
+            session()->forget(["event_{$event->id}_tickets", "event_{$event->id}_addons"]);
 
             // Kirim email panduan pembayaran & pemberitahuan batas bayar 30 menit ke pendaftar
             SendPaymentPendingEmailJob::dispatchAfterResponse($order);
@@ -521,7 +553,9 @@ class PublicRegistrationController extends Controller
 
             return redirect()->route('public.order.show', $order->order_code);
         } catch (Exception $e) {
-            return back()->withInput()->withErrors(['error' => $e->getMessage()]);
+            return redirect()->route('public.register.participants', $slug)
+                ->withInput()
+                ->withErrors(['error' => $e->getMessage()]);
         }
     }
 
