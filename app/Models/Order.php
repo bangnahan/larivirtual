@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use App\Jobs\SendMetaCapiPurchaseJob;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -32,15 +31,6 @@ class Order extends Model
     public function isMetaCapiPurchaseSent(): bool
     {
         return ! is_null($this->meta_capi_purchase_sent_at);
-    }
-
-    protected static function booted(): void
-    {
-        static::updated(function (Order $order) {
-            if ($order->wasChanged('status') && $order->status === 'paid' && ! $order->isMetaCapiPurchaseSent()) {
-                SendMetaCapiPurchaseJob::dispatchAfterResponse($order);
-            }
-        });
     }
 
     public function event(): BelongsTo

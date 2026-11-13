@@ -106,6 +106,7 @@ class JerseyCustomizationTest extends TestCase
     public function test_checkout_calculates_sleeve_and_big_size_surcharges_accurately(): void
     {
         $mockTripay = $this->mock(TripayService::class);
+        $mockTripay->shouldReceive('calculateFee')->andReturn(0);
         $mockTripay->shouldReceive('createTransaction')
             ->once()
             ->andReturn([

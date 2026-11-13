@@ -190,6 +190,7 @@ class MedaliOnlyCategoryTest extends TestCase
     public function test_participant_registration_succeeds_without_jersey_size_for_medali_only(): void
     {
         $mockTripay = $this->mock(TripayService::class);
+        $mockTripay->shouldReceive('calculateFee')->andReturn(0);
         $mockTripay->shouldReceive('createTransaction')
             ->once()
             ->andReturn([
@@ -247,6 +248,7 @@ class MedaliOnlyCategoryTest extends TestCase
     public function test_jersey_only_registration_succeeds_with_jersey_and_allocates_stock(): void
     {
         $mockTripay = $this->mock(TripayService::class);
+        $mockTripay->shouldReceive('calculateFee')->andReturn(0);
         $mockTripay->shouldReceive('createTransaction')
             ->once()
             ->andReturn([

@@ -483,6 +483,12 @@
                                 <span class="font-medium text-slate-800">Rp {{ number_format($order->platform_fee, 0, ',', '.') }}</span>
                             </div>
                         @endif
+                        @if(($order->payment_gateway_fee ?? 0) > 0)
+                            <div class="flex justify-between">
+                                <span>Biaya Pembayaran ({{ $order->tripay_payment_method }}):</span>
+                                <span class="font-medium text-slate-800">Rp {{ number_format($order->payment_gateway_fee, 0, ',', '.') }}</span>
+                            </div>
+                        @endif
                         <div class="flex justify-between pt-2 border-t border-slate-200 font-extrabold text-slate-900 text-sm">
                             <span>Total Pembayaran:</span>
                             <span class="text-orange-600 font-mono">Rp {{ number_format($order->grand_total, 0, ',', '.') }}</span>

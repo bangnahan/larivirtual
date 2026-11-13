@@ -64,6 +64,11 @@ class PublicRegistrationController extends Controller
             ])
             ->firstOrFail();
 
+        if (! $event->isRegistrationOpen()) {
+            return redirect()->route('public.register.show', $slug)
+                ->withErrors(['registration' => 'Pendaftaran untuk event ini belum dibuka atau telah ditutup.']);
+        }
+
         $tickets = $request->input('tickets') ?: old('tickets');
         $addons = $request->input('addons') ?: old('addons');
 
@@ -196,6 +201,11 @@ class PublicRegistrationController extends Controller
     public function checkout(Request $request, string $slug): RedirectResponse
     {
         $event = Event::where('slug', $slug)->firstOrFail();
+
+        if (! $event->isRegistrationOpen()) {
+            return redirect()->route('public.register.show', $slug)
+                ->withErrors(['registration' => 'Pendaftaran untuk event ini belum dibuka atau telah ditutup.']);
+        }
 
         // Cek apakah payload bertipe multi-peserta (array `participants`) atau single-peserta
         if ($request->has('participants') && is_array($request->input('participants'))) {
@@ -439,7 +449,9 @@ class PublicRegistrationController extends Controller
 
                 $platformFee = 0;
                 $subtotal = $totalTicketsPrice + $totalAddonsPrice + $totalJerseySurcharges;
-                $grandTotal = $subtotal + $platformFee + $shippingCost;
+                $paymentMethod = $request->input('payment_method', 'QRIS');
+                $paymentGatewayFee = $this->tripayService->calculateFee($paymentMethod, $subtotal + $shippingCost);
+                $grandTotal = $subtotal + $platformFee + $shippingCost + $paymentGatewayFee;
                 $orderCode = 'JLTX-'.date('Ymd').'-'.strtoupper(Str::random(5));
 
                 $order = Order::create([
@@ -453,6 +465,7 @@ class PublicRegistrationController extends Controller
                     'jersey_surcharges_total' => $totalJerseySurcharges,
                     'shipping_cost' => $shippingCost,
                     'platform_fee' => $platformFee,
+                    'payment_gateway_fee' => $paymentGatewayFee,
                     'grand_total' => $grandTotal,
                     'status' => 'pending',
                     'ip_address' => $request->ip(),

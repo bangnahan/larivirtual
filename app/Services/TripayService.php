@@ -50,7 +50,7 @@ class TripayService
                         });
 
                         if (! empty($activeChannels)) {
-                            // Normalisasi nama grup agar konsisten
+                            // Normalisasi nama grup dan struktur fee agar konsisten
                             return array_values(array_map(function ($ch) {
                                 $group = $ch['group'] ?? 'Lainnya';
                                 if (in_array(strtolower($group), ['virtual account', 'va'])) {
@@ -62,6 +62,11 @@ class TripayService
                                 } elseif (in_array(strtolower($group), ['paylater', 'cicilan'])) {
                                     $ch['group'] = 'Paylater';
                                 }
+
+                                $feeFlat = $ch['fee_flat'] ?? ($ch['total_fee']['flat'] ?? ($ch['fee_customer']['flat'] ?? 0));
+                                $feePercent = $ch['fee_percent'] ?? ($ch['total_fee']['percent'] ?? ($ch['fee_customer']['percent'] ?? 0));
+                                $ch['fee_flat'] = (float) $feeFlat;
+                                $ch['fee_percent'] = (float) $feePercent;
 
                                 return $ch;
                             }, $activeChannels));
@@ -76,6 +81,30 @@ class TripayService
 
             return $this->getDefaultPaymentChannels();
         });
+    }
+
+    /**
+     * Hitung biaya layanan payment gateway Tripay berdasarkan kanal dan nominal transaksi
+     */
+    public function calculateFee(string $channelCode, float $amount): int
+    {
+        $channels = $this->getPaymentChannels();
+        $channel = collect($channels)->firstWhere('code', strtoupper(trim($channelCode)));
+
+        if (! $channel) {
+            return 0;
+        }
+
+        $feeFlat = (float) ($channel['fee_flat'] ?? 0);
+        $feePercent = (float) ($channel['fee_percent'] ?? 0);
+
+        if ($feeFlat <= 0 && $feePercent <= 0) {
+            return 0;
+        }
+
+        $calculatedFee = $feeFlat + ($amount * ($feePercent / 100));
+
+        return (int) round($calculatedFee);
     }
 
     /**
@@ -569,6 +598,16 @@ class TripayService
                 'sku' => 'SHIPPING-SPX',
                 'name' => 'Ongkos Kirim SPX Regular',
                 'price' => (int) round($order->shipping_cost),
+                'quantity' => 1,
+            ];
+        }
+
+        // Tambahkan biaya pembayaran payment gateway Tripay jika ada
+        if (($order->payment_gateway_fee ?? 0) > 0) {
+            $orderItems[] = [
+                'sku' => 'FEE-PAYMENT-GATEWAY',
+                'name' => 'Biaya Layanan Pembayaran ('.($order->tripay_payment_method ?? 'Tripay').')',
+                'price' => (int) round($order->payment_gateway_fee),
                 'quantity' => 1,
             ];
         }

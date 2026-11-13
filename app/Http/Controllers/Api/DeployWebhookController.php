@@ -14,7 +14,13 @@ class DeployWebhookController extends Controller
      */
     public function handle(Request $request): JsonResponse
     {
-        $expectedSecret = config('app.deploy_secret', env('DEPLOY_SECRET', 'jelatix_auto_deploy_secret_2026'));
+        $expectedSecret = (string) config('app.deploy_secret', env('DEPLOY_SECRET', ''));
+
+        if (empty($expectedSecret)) {
+            Log::error('Auto-deploy: DEPLOY_SECRET is not configured on the server.');
+
+            return response()->json(['status' => 'error', 'message' => 'Deploy webhook is not configured'], 500);
+        }
 
         // 1. Verifikasi Keamanan: Cek X-Hub-Signature-256 dari GitHub atau token secret
         $githubSignature = $request->header('X-Hub-Signature-256');
@@ -63,8 +69,8 @@ class DeployWebhookController extends Controller
             $commands = [
                 "cd {$basePath}",
                 'GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=no" git pull origin main 2>&1',
-                'php artisan migrate --force 2>&1',
-                'php artisan optimize 2>&1',
+                'PHP_BIN=$(which php8.4 2>/dev/null || which php); $PHP_BIN artisan migrate --force 2>&1',
+                'PHP_BIN=$(which php8.4 2>/dev/null || which php); $PHP_BIN artisan optimize 2>&1',
             ];
 
             $fullCommand = implode(' && ', $commands);
@@ -85,7 +91,6 @@ class DeployWebhookController extends Controller
                 'status' => 'success',
                 'message' => 'Auto-deploy completed successfully',
                 'branch' => 'main',
-                'output' => $output,
             ]);
         } catch (\Throwable $e) {
             Log::error('Auto-deploy exception: '.$e->getMessage());

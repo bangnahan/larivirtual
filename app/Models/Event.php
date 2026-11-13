@@ -138,7 +138,10 @@ class Event extends Model
             }
 
             if (empty($event->organizer_id)) {
-                $event->organizer_id = Organizer::first()?->id ?? 1;
+                $firstOrganizer = Organizer::first();
+                if ($firstOrganizer) {
+                    $event->organizer_id = $firstOrganizer->id;
+                }
             }
 
             if (empty($event->organizer_name) && $event->organizer_id) {
@@ -217,9 +220,20 @@ class Event extends Model
 
     public function isRegistrationOpen(): bool
     {
+        if ($this->status !== 'published') {
+            return false;
+        }
+
         $now = now();
 
-        return $this->status === 'published' &&
-            $now->between($this->registration_open_date, $this->registration_close_date);
+        if ($this->registration_open_date && $now->lessThan($this->registration_open_date)) {
+            return false;
+        }
+
+        if ($this->registration_close_date && $now->greaterThan($this->registration_close_date)) {
+            return false;
+        }
+
+        return true;
     }
 }
