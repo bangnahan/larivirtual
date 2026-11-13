@@ -200,14 +200,14 @@
                 Terima kasih telah mendaftar di <strong>{{ $event->title }}</strong>. Data pendaftaran Anda telah kami terima dan kuota tiket Anda telah diamankan sementara.
             </p>
 
-            <!-- Urgency Alert: 30 Menit -->
+            <!-- Urgency Alert: 1 Jam -->
             <div class="alert-urgent">
-                <span class="alert-urgent-title">⏱️ HARAP SELESAIKAN PEMBAYARAN DALAM WAKTU 30 MENIT</span>
+                <span class="alert-urgent-title">⏱️ HARAP SELESAIKAN PEMBAYARAN DALAM WAKTU 1 JAM</span>
                 <div class="alert-urgent-time">
-                    Batas Waktu: {{ $order->expired_at ? $order->expired_at->format('d M Y, H:i') : now()->addMinutes(30)->format('d M Y, H:i') }} WIB
+                    Batas Waktu: {{ $order->expired_at ? $order->expired_at->setTimezone('Asia/Jakarta')->format('d M Y, H:i') : now()->addHour()->setTimezone('Asia/Jakarta')->format('d M Y, H:i') }} WIB
                 </div>
                 <p class="alert-urgent-desc">
-                    Jika pembayaran tidak diterima dalam <strong>30 menit</strong> sejak pendaftaran, sistem Jelatix akan <strong>otomatis membatalkan pesanan</strong> dan melepaskan kuota tiket serta ukuran jersey Anda kembali ke publik.
+                    Jika pembayaran tidak diterima dalam <strong>1 jam</strong> sejak pendaftaran, sistem akan <strong>otomatis membatalkan pesanan</strong> dan melepaskan kuota tiket serta ukuran jersey Anda kembali ke publik.
                 </p>
             </div>
 

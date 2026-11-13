@@ -543,7 +543,7 @@ class PublicRegistrationController extends Controller
             // Hapus data session pemesanan HANYA SETELAH request ke Tripay sukses
             session()->forget(["event_{$event->id}_tickets", "event_{$event->id}_addons"]);
 
-            // Kirim email panduan pembayaran & pemberitahuan batas bayar 30 menit ke pendaftar
+            // Kirim email panduan pembayaran & pemberitahuan batas bayar 1 jam ke pendaftar
             SendPaymentPendingEmailJob::dispatchAfterResponse($order);
 
             // Jika Tripay mengembalikan checkout_url resmi, langsung alihkan calon peserta ke halaman pembayaran Tripay

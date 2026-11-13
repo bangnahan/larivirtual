@@ -29,7 +29,7 @@ class SendPaymentPendingEmailJob
 
         try {
             $event = $order->event;
-            $subject = '[PENTING] Panduan Bayar: '.($event?->title ?? 'Tiket Lari')." - {$order->order_code} (Batas Waktu 30 Menit)";
+            $subject = '[PENTING] Panduan Bayar: '.($event?->title ?? 'Tiket Lari')." - {$order->order_code} (Batas Waktu 1 Jam)";
 
             $htmlContent = view('emails.payment_pending', [
                 'order' => $order,

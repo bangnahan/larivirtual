@@ -210,7 +210,7 @@
         @else
             <!-- PENDING PAYMENT INVOICE (MENUNGGU PEMBAYARAN) -->
             @php
-                $remainingSeconds = max(0, $order->expired_at ? (int) now()->diffInSeconds($order->expired_at, false) : 1800);
+                $remainingSeconds = max(0, $order->expired_at ? (int) now()->diffInSeconds($order->expired_at, false) : 3600);
                 $isExpired = ($remainingSeconds <= 0);
             @endphp
 

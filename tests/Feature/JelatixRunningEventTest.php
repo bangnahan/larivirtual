@@ -550,7 +550,7 @@ class JelatixRunningEventTest extends TestCase
         $response->assertJson(['success' => true]);
     }
 
-    public function test_registration_sends_payment_pending_email_with_30_minute_warning_and_guide(): void
+    public function test_registration_sends_payment_pending_email_with_1_hour_warning_and_guide(): void
     {
         $order = Order::create([
             'event_id' => $this->event->id,
@@ -566,7 +566,7 @@ class JelatixRunningEventTest extends TestCase
             'tripay_payment_method' => 'BRIVA',
             'tripay_pay_code' => '442711669584357',
             'tripay_checkout_url' => 'https://tripay.co.id/checkout/DEV-T39430TEST123',
-            'expired_at' => now()->addMinutes(30),
+            'expired_at' => now()->addMinutes(60),
         ]);
 
         $jersey = JerseySize::create([
@@ -601,7 +601,7 @@ class JelatixRunningEventTest extends TestCase
         ])->render();
 
         $this->assertStringContainsString('Pendaftaran Berhasil!', $viewContent);
-        $this->assertStringContainsString('30 MENIT', $viewContent);
+        $this->assertStringContainsString('1 JAM', $viewContent);
         $this->assertStringContainsString('442711669584357', $viewContent);
         $this->assertStringContainsString('BRIVA', $viewContent);
         $this->assertStringContainsString('https://tripay.co.id/checkout/DEV-T39430TEST123', $viewContent);
@@ -614,8 +614,8 @@ class JelatixRunningEventTest extends TestCase
             ->withArgs(function ($recipientEmail, $recipientName, $subject, $htmlContent) {
                 return $recipientEmail === 'budi@santoso.id'
                     && $recipientName === 'Budi Santoso'
-                    && str_contains($subject, 'Batas Waktu 30 Menit')
-                    && str_contains($htmlContent, '30 MENIT')
+                    && str_contains($subject, 'Batas Waktu 1 Jam')
+                    && str_contains($htmlContent, '1 JAM')
                     && str_contains($htmlContent, '442711669584357');
             })
             ->andReturn(true);

@@ -11,5 +11,5 @@ return [
         'production' => 'https://tripay.co.id/api',
     ],
 
-    'expiry_minutes' => env('TRIPAY_EXPIRY_MINUTES', 30), // Standar hold kuota war tiket
+    'expiry_minutes' => env('TRIPAY_EXPIRY_MINUTES', 60), // Batas waktu pembayaran 1 jam
 ];
