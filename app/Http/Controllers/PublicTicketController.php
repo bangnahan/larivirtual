@@ -13,15 +13,40 @@ class PublicTicketController extends Controller
 {
     public function __construct(protected TicketPdfService $ticketPdfService) {}
 
-    public function index()
+    public function index(Request $request)
     {
+        $search = trim((string) $request->query('query', $request->query('bib', $request->query('token', ''))));
+
+        if (! empty($search)) {
+            $participants = Participant::with(['order', 'category.event', 'jerseySize'])
+                ->where(function ($q) use ($search) {
+                    $q->where('email', $search)
+                        ->orWhere('phone', $search)
+                        ->orWhere('bib_number', $search)
+                        ->orWhere('qr_token', $search)
+                        ->orWhereHas('order', function ($orderQuery) use ($search) {
+                            $orderQuery->where('order_code', $search);
+                        });
+                })
+                ->whereHas('order', function ($orderQuery) {
+                    $orderQuery->where('status', 'paid');
+                })
+                ->get();
+
+            return view('public.check_ticket', [
+                'search' => $search,
+                'participants' => $participants,
+                'searched' => true,
+            ]);
+        }
+
         return view('public.check_ticket');
     }
 
     public function search(Request $request)
     {
         $request->validate([
-            'query' => 'required|string|min:3',
+            'query' => 'required|string|min:2',
         ]);
 
         $search = trim($request->input('query'));
@@ -32,6 +57,7 @@ class PublicTicketController extends Controller
                 $q->where('email', $search)
                     ->orWhere('phone', $search)
                     ->orWhere('bib_number', $search)
+                    ->orWhere('qr_token', $search)
                     ->orWhereHas('order', function ($orderQuery) use ($search) {
                         $orderQuery->where('order_code', $search);
                     });

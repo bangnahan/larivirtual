@@ -18,11 +18,13 @@ class EbibPdfService
 
         $resolvedEvent = $event ?? $participant->event ?? $participant->category?->event;
 
-        $qrToken = $participant->qr_token ?: 'VIRUN-PREVIEW';
+        $targetQuery = $participant->bib_number ?: ($participant->qr_token ?: '1001');
+        $verificationUrl = route('public.ticket.index', ['query' => $targetQuery]);
+
         $qrCodeSvg = QrCode::format('svg')
             ->size(90)
             ->errorCorrection('M')
-            ->generate($qrToken);
+            ->generate($verificationUrl);
 
         $qrCodeBase64 = base64_encode($qrCodeSvg);
 

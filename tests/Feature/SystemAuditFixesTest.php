@@ -470,5 +470,11 @@ class SystemAuditFixesTest extends TestCase
 
         $this->assertEquals('#0f172a', $this->event->fresh()->ebib_text_color);
         $this->assertEquals(60, $this->event->fresh()->ebib_bib_top_mm);
+
+        // Test GET /cek-tiket with query param (from scanned QR code)
+        $responseGetCheck = $this->get(route('public.ticket.index', ['query' => $participant->bib_number]));
+        $responseGetCheck->assertStatus(200);
+        $responseGetCheck->assertSee($participant->bib_name);
+        $responseGetCheck->assertSee($participant->bib_number);
     }
 }

@@ -13,10 +13,13 @@ class TicketPdfService
      */
     public function generateTicketPdf(Participant $participant): string
     {
+        $targetQuery = $participant->bib_number ?: ($participant->qr_token ?: (string) $participant->id);
+        $verificationUrl = route('public.ticket.index', ['query' => $targetQuery]);
+
         $qrCodeSvg = QrCode::format('svg')
             ->size(200)
             ->errorCorrection('H')
-            ->generate($participant->qr_token);
+            ->generate($verificationUrl);
 
         $qrCodeBase64 = base64_encode($qrCodeSvg);
 
