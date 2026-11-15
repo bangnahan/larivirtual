@@ -37,7 +37,117 @@ class Event extends Model
      */
     public function getEbibConfig(string $key, mixed $default = null): mixed
     {
-        return data_get($this->ebib_layout_config, $key, $default);
+        $config = is_array($this->ebib_layout_config) ? $this->ebib_layout_config : [];
+
+        return data_get($config, $key, $default);
+    }
+
+    public function getEbibTextColorAttribute(): string
+    {
+        return $this->getEbibConfig('text_color', '#ffffff');
+    }
+
+    public function setEbibTextColorAttribute($value): void
+    {
+        $config = is_array($this->ebib_layout_config) ? $this->ebib_layout_config : [];
+        $config['text_color'] = $value;
+        $this->ebib_layout_config = $config;
+    }
+
+    public function getEbibBibTopMmAttribute(): int
+    {
+        return (int) $this->getEbibConfig('bib_top_mm', 45);
+    }
+
+    public function setEbibBibTopMmAttribute($value): void
+    {
+        $config = is_array($this->ebib_layout_config) ? $this->ebib_layout_config : [];
+        $config['bib_top_mm'] = (int) $value;
+        $this->ebib_layout_config = $config;
+    }
+
+    public function getEbibBibFontSizePtAttribute(): int
+    {
+        return (int) $this->getEbibConfig('bib_font_size_pt', 64);
+    }
+
+    public function setEbibBibFontSizePtAttribute($value): void
+    {
+        $config = is_array($this->ebib_layout_config) ? $this->ebib_layout_config : [];
+        $config['bib_font_size_pt'] = (int) $value;
+        $this->ebib_layout_config = $config;
+    }
+
+    public function getEbibNameTopMmAttribute(): int
+    {
+        return (int) $this->getEbibConfig('name_top_mm', 82);
+    }
+
+    public function setEbibNameTopMmAttribute($value): void
+    {
+        $config = is_array($this->ebib_layout_config) ? $this->ebib_layout_config : [];
+        $config['name_top_mm'] = (int) $value;
+        $this->ebib_layout_config = $config;
+    }
+
+    public function getEbibNameFontSizePtAttribute(): int
+    {
+        return (int) $this->getEbibConfig('name_font_size_pt', 18);
+    }
+
+    public function setEbibNameFontSizePtAttribute($value): void
+    {
+        $config = is_array($this->ebib_layout_config) ? $this->ebib_layout_config : [];
+        $config['name_font_size_pt'] = (int) $value;
+        $this->ebib_layout_config = $config;
+    }
+
+    public function getEbibShowEventTitleAttribute(): bool
+    {
+        return (bool) $this->getEbibConfig('show_event_title', false);
+    }
+
+    public function setEbibShowEventTitleAttribute($value): void
+    {
+        $config = is_array($this->ebib_layout_config) ? $this->ebib_layout_config : [];
+        $config['show_event_title'] = (bool) $value;
+        $this->ebib_layout_config = $config;
+    }
+
+    public function getEbibShowCategoryBadgeAttribute(): bool
+    {
+        return (bool) $this->getEbibConfig('show_category_badge', true);
+    }
+
+    public function setEbibShowCategoryBadgeAttribute($value): void
+    {
+        $config = is_array($this->ebib_layout_config) ? $this->ebib_layout_config : [];
+        $config['show_category_badge'] = (bool) $value;
+        $this->ebib_layout_config = $config;
+    }
+
+    public function getEbibShowQrCodeAttribute(): bool
+    {
+        return (bool) $this->getEbibConfig('show_qr_code', true);
+    }
+
+    public function setEbibShowQrCodeAttribute($value): void
+    {
+        $config = is_array($this->ebib_layout_config) ? $this->ebib_layout_config : [];
+        $config['show_qr_code'] = (bool) $value;
+        $this->ebib_layout_config = $config;
+    }
+
+    public function getEbibShowPinHolesAttribute(): bool
+    {
+        return (bool) $this->getEbibConfig('show_pin_holes', true);
+    }
+
+    public function setEbibShowPinHolesAttribute($value): void
+    {
+        $config = is_array($this->ebib_layout_config) ? $this->ebib_layout_config : [];
+        $config['show_pin_holes'] = (bool) $value;
+        $this->ebib_layout_config = $config;
     }
 
     /**

@@ -252,12 +252,16 @@
 
     <!-- HERO BIB NUMBER (DENGAN JARAK VERTIKAL DINAMIS) -->
     <div class="bib-box">
-        <div class="bib-number">{{ $participant->bib_number ?: 'RUNNER' }}</div>
+        <div class="bib-number" style="color: {{ $textColor }} !important; font-size: {{ $bibFontSizePt }}pt !important; text-shadow: {{ $textShadow }} !important;">
+            {{ $participant->bib_number ?: 'RUNNER' }}
+        </div>
     </div>
 
     <!-- RUNNER NAME (DENGAN JARAK VERTIKAL DINAMIS) -->
     <div class="runner-box">
-        <div class="runner-name">{{ $participant->bib_name ?: $participant->full_name }}</div>
+        <div class="runner-name" style="color: {{ $textColor }} !important; font-size: {{ $nameFontSizePt }}pt !important; text-shadow: {{ $textShadow }} !important;">
+            {{ $participant->bib_name ?: $participant->full_name }}
+        </div>
     </div>
 
     <!-- FOOTER META & QR CODE -->

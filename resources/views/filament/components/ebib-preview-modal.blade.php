@@ -22,6 +22,7 @@
     </div>
 
     <p class="text-[11px] text-slate-400 text-center">
-        💡 <em>Catatan: Jika Anda mengubah nilai pada form, klik tombol <strong>"Simpan Perubahan"</strong> di bagian bawah halaman terlebih dahulu agar pratinjau memuat tata letak terbaru.</em>
+        💡 <em>Pratinjau langsung memuat pilihan warna dan posisi input saat ini. Jangan lupa klik tombol <strong>"Simpan Perubahan"</strong> di bagian bawah halaman agar konfigurasi tersimpan permanen.</em>
     </p>
 </div>
+

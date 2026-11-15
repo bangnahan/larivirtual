@@ -387,7 +387,6 @@ class EventResource extends Resource
 
                                 Forms\Components\Section::make('Tata Letak & Tipografi Nomor E-BIB')
                                     ->description('Sesuaikan posisi vertikal, ukuran font, dan warna teks agar pas dengan kotak kosong pada desain background E-BIB Anda (Standar Kertas A5 Landscape: 210 x 148 mm).')
-                                    ->statePath('ebib_layout_config')
                                     ->headerActions([
                                         Forms\Components\Actions\Action::make('preview_modal')
                                             ->label('👁️ Pratinjau Cepat E-BIB')
@@ -397,20 +396,58 @@ class EventResource extends Resource
                                             ->modalWidth('5xl')
                                             ->modalSubmitAction(false)
                                             ->modalCancelActionLabel('Tutup')
-                                            ->modalContent(fn (?Event $record) => $record ? view('filament.components.ebib-preview-modal', [
-                                                'previewUrl' => route('admin.events.preview_ebib', $record),
-                                            ]) : new HtmlString('<div class="p-4 text-center text-slate-500">Silakan simpan event terlebih dahulu untuk melihat pratinjau.</div>')),
+                                            ->modalContent(function (Forms\Get $get, ?Event $record) {
+                                                if (! $record) {
+                                                    return new HtmlString('<div class="p-4 text-center text-slate-500">Silakan simpan event terlebih dahulu untuk melihat pratinjau.</div>');
+                                                }
+
+                                                $previewParams = array_filter([
+                                                    'text_color' => $get('ebib_text_color'),
+                                                    'bib_top_mm' => $get('ebib_bib_top_mm'),
+                                                    'bib_font_size_pt' => $get('ebib_bib_font_size_pt'),
+                                                    'name_top_mm' => $get('ebib_name_top_mm'),
+                                                    'name_font_size_pt' => $get('ebib_name_font_size_pt'),
+                                                    'show_event_title' => $get('ebib_show_event_title') ? 1 : 0,
+                                                    'show_category_badge' => $get('ebib_show_category_badge') ? 1 : 0,
+                                                    'show_qr_code' => $get('ebib_show_qr_code') ? 1 : 0,
+                                                    'show_pin_holes' => $get('ebib_show_pin_holes') ? 1 : 0,
+                                                    '_t' => time(),
+                                                ], fn ($val) => $val !== null);
+
+                                                return view('filament.components.ebib-preview-modal', [
+                                                    'previewUrl' => route('admin.events.preview_ebib', array_merge(['event' => $record], $previewParams)),
+                                                ]);
+                                            }),
 
                                         Forms\Components\Actions\Action::make('preview_tab')
                                             ->label('↗️ Buka PDF (Tab Baru)')
                                             ->icon('heroicon-o-arrow-top-right-on-square')
                                             ->color('gray')
-                                            ->url(fn (?Event $record) => $record ? route('admin.events.preview_ebib', $record) : '#')
+                                            ->url(function (Forms\Get $get, ?Event $record) {
+                                                if (! $record) {
+                                                    return '#';
+                                                }
+
+                                                $previewParams = array_filter([
+                                                    'text_color' => $get('ebib_text_color'),
+                                                    'bib_top_mm' => $get('ebib_bib_top_mm'),
+                                                    'bib_font_size_pt' => $get('ebib_bib_font_size_pt'),
+                                                    'name_top_mm' => $get('ebib_name_top_mm'),
+                                                    'name_font_size_pt' => $get('ebib_name_font_size_pt'),
+                                                    'show_event_title' => $get('ebib_show_event_title') ? 1 : 0,
+                                                    'show_category_badge' => $get('ebib_show_category_badge') ? 1 : 0,
+                                                    'show_qr_code' => $get('ebib_show_qr_code') ? 1 : 0,
+                                                    'show_pin_holes' => $get('ebib_show_pin_holes') ? 1 : 0,
+                                                    '_t' => time(),
+                                                ], fn ($val) => $val !== null);
+
+                                                return route('admin.events.preview_ebib', array_merge(['event' => $record], $previewParams));
+                                            })
                                             ->openUrlInNewTab()
                                             ->visible(fn (?Event $record) => $record !== null),
                                     ])
                                     ->schema([
-                                        Forms\Components\Select::make('text_color')
+                                        Forms\Components\Select::make('ebib_text_color')
                                             ->label('Warna Teks Nomor & Nama')
                                             ->options([
                                                 '#ffffff' => '⚪ Putih (#ffffff) - Untuk background gelap',
@@ -420,55 +457,64 @@ class EventResource extends Resource
                                                 '#1e3a8a' => '🔵 Biru Navy (#1e3a8a)',
                                             ])
                                             ->default('#ffffff')
+                                            ->live()
                                             ->required(),
 
-                                        Forms\Components\TextInput::make('bib_top_mm')
+                                        Forms\Components\TextInput::make('ebib_bib_top_mm')
                                             ->label('Posisi Nomor BIB dari Atas (mm)')
                                             ->numeric()
                                             ->default(45)
                                             ->minValue(0)
                                             ->maxValue(140)
+                                            ->live(onBlur: true)
                                             ->helperText('Default: 45 mm dari tepi atas.'),
 
-                                        Forms\Components\TextInput::make('bib_font_size_pt')
+                                        Forms\Components\TextInput::make('ebib_bib_font_size_pt')
                                             ->label('Ukuran Font Nomor BIB (pt)')
                                             ->numeric()
                                             ->default(64)
                                             ->minValue(24)
                                             ->maxValue(120)
+                                            ->live(onBlur: true)
                                             ->helperText('Default: 64 pt.'),
 
-                                        Forms\Components\TextInput::make('name_top_mm')
+                                        Forms\Components\TextInput::make('ebib_name_top_mm')
                                             ->label('Posisi Nama Pelari dari Atas (mm)')
                                             ->numeric()
                                             ->default(82)
                                             ->minValue(0)
                                             ->maxValue(140)
+                                            ->live(onBlur: true)
                                             ->helperText('Default: 82 mm dari tepi atas.'),
 
-                                        Forms\Components\TextInput::make('name_font_size_pt')
+                                        Forms\Components\TextInput::make('ebib_name_font_size_pt')
                                             ->label('Ukuran Font Nama Pelari (pt)')
                                             ->numeric()
                                             ->default(18)
                                             ->minValue(10)
                                             ->maxValue(40)
+                                            ->live(onBlur: true)
                                             ->helperText('Default: 18 pt.'),
 
-                                        Forms\Components\Toggle::make('show_event_title')
+                                        Forms\Components\Toggle::make('ebib_show_event_title')
                                             ->label('Tampilkan Teks Judul Event')
                                             ->helperText('Matikan jika gambar background Anda sudah memiliki logo / judul event resmi.')
+                                            ->live()
                                             ->default(false),
 
-                                        Forms\Components\Toggle::make('show_category_badge')
+                                        Forms\Components\Toggle::make('ebib_show_category_badge')
                                             ->label('Tampilkan Badge Kategori Lari (misal: 10K)')
+                                            ->live()
                                             ->default(true),
 
-                                        Forms\Components\Toggle::make('show_qr_code')
+                                        Forms\Components\Toggle::make('ebib_show_qr_code')
                                             ->label('Tampilkan QR Code Verifikasi di Pojok')
+                                            ->live()
                                             ->default(true),
 
-                                        Forms\Components\Toggle::make('show_pin_holes')
+                                        Forms\Components\Toggle::make('ebib_show_pin_holes')
                                             ->label('Tampilkan Tanda Lubang Peniti di 4 Sudut')
+                                            ->live()
                                             ->default(true),
                                     ])->columns(2),
                             ]),
