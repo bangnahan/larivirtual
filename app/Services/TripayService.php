@@ -602,16 +602,6 @@ class TripayService
             ];
         }
 
-        // Tambahkan biaya pembayaran payment gateway Tripay jika ada
-        if (($order->payment_gateway_fee ?? 0) > 0) {
-            $orderItems[] = [
-                'sku' => 'FEE-PAYMENT-GATEWAY',
-                'name' => 'Biaya Layanan Pembayaran ('.($order->tripay_payment_method ?? 'Tripay').')',
-                'price' => (int) round($order->payment_gateway_fee),
-                'quantity' => 1,
-            ];
-        }
-
         return $orderItems;
     }
 

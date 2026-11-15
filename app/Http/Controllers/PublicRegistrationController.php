@@ -449,9 +449,8 @@ class PublicRegistrationController extends Controller
 
                 $platformFee = 0;
                 $subtotal = $totalTicketsPrice + $totalAddonsPrice + $totalJerseySurcharges;
-                $paymentMethod = $request->input('payment_method', 'QRIS');
-                $paymentGatewayFee = $this->tripayService->calculateFee($paymentMethod, $subtotal + $shippingCost);
-                $grandTotal = $subtotal + $platformFee + $shippingCost + $paymentGatewayFee;
+                $paymentGatewayFee = 0;
+                $grandTotal = $subtotal + $platformFee + $shippingCost;
                 $orderCode = 'JLTX-'.date('Ymd').'-'.strtoupper(Str::random(5));
 
                 $order = Order::create([

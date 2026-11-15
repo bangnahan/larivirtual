@@ -43,15 +43,6 @@
     /></noscript>
     <!-- End Meta Pixel Code -->
     @endif
-    @php
-        $channelFeeConfig = [];
-        foreach ($paymentChannels as $ch) {
-            $channelFeeConfig[$ch['code']] = [
-                'flat' => (float) ($ch['fee_flat'] ?? 0),
-                'percent' => (float) ($ch['fee_percent'] ?? 0),
-            ];
-        }
-    @endphp
 </head>
 <body class="bg-slate-50 text-slate-900 min-h-screen flex flex-col antialiased" x-data="{
     subtotalTickets: {{ (int) $totalPrice }},
@@ -60,7 +51,6 @@
     platformFee: 0,
     showSizeChart: false,
     selectedPayment: '{{ old('payment_method', 'QRIS') }}',
-    paymentFees: @json($channelFeeConfig),
     includesJersey: {
         @foreach($participantSlots as $slot)
             {{ $slot['index'] }}: {{ ($slot['category']->includes_jersey ?? true) ? 'true' : 'false' }},
@@ -76,6 +66,11 @@
             {{ $slot['index'] }}: '{{ old("participants.{$slot['index']}.jersey_size_id", "") }}',
         @endforeach
     },
+    sizeSurcharges: {
+        @foreach($event->jerseySizes as $size)
+            {{ $size->id }}: {{ (int) ($size->surcharge ?? 0) }},
+        @endforeach
+    },
     get totalJerseySurcharges() {
         let total = 0;
         for (const [idx, sleeve] of Object.entries(this.sleeves)) {
@@ -88,14 +83,8 @@
         }
         return total;
     },
-    get gatewayFee() {
-        let ch = this.paymentFees[this.selectedPayment];
-        if (!ch) return 0;
-        let base = this.subtotalTickets + this.subtotalAddons + this.totalJerseySurcharges + this.shippingCost;
-        return Math.round(ch.flat + (base * (ch.percent / 100)));
-    },
     get grandTotal() {
-        return this.subtotalTickets + this.subtotalAddons + this.totalJerseySurcharges + this.shippingCost + this.platformFee + this.gatewayFee;
+        return this.subtotalTickets + this.subtotalAddons + this.totalJerseySurcharges + this.shippingCost + this.platformFee;
     },
     formatRupiah(num) {
         return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(num);
@@ -445,7 +434,8 @@
                                             <div class="grid grid-cols-3 gap-1.5">
                                                 <!-- Pendek -->
                                                 <label 
-                                                    class="flex flex-col items-center justify-center p-2 rounded-xl border cursor-pointer text-center transition"
+                                                    @click="sleeves[{{ $i }}] = 'short'"
+                                                    class="flex flex-col items-center justify-center p-2 rounded-xl border cursor-pointer text-center transition select-none"
                                                     :class="sleeves[{{ $i }}] === 'short' ? 'border-orange-500 bg-orange-50 text-orange-950 font-bold shadow-xs ring-1 ring-orange-400' : 'border-slate-200 bg-slate-50/70 hover:bg-slate-100 text-slate-700 font-medium'">
                                                     <input 
                                                         type="radio" 
@@ -459,7 +449,8 @@
 
                                                 <!-- Singlet -->
                                                 <label 
-                                                    class="flex flex-col items-center justify-center p-2 rounded-xl border cursor-pointer text-center transition"
+                                                    @click="sleeves[{{ $i }}] = 'singlet'"
+                                                    class="flex flex-col items-center justify-center p-2 rounded-xl border cursor-pointer text-center transition select-none"
                                                     :class="sleeves[{{ $i }}] === 'singlet' ? 'border-orange-500 bg-orange-50 text-orange-950 font-bold shadow-xs ring-1 ring-orange-400' : 'border-slate-200 bg-slate-50/70 hover:bg-slate-100 text-slate-700 font-medium'">
                                                     <input 
                                                         type="radio" 
@@ -473,7 +464,8 @@
 
                                                 <!-- Panjang (+20rb) -->
                                                 <label 
-                                                    class="flex flex-col items-center justify-center p-2 rounded-xl border cursor-pointer text-center transition relative"
+                                                    @click="sleeves[{{ $i }}] = 'long'"
+                                                    class="flex flex-col items-center justify-center p-2 rounded-xl border cursor-pointer text-center transition relative select-none"
                                                     :class="sleeves[{{ $i }}] === 'long' ? 'border-orange-500 bg-orange-500 text-white font-bold shadow-xs ring-1 ring-orange-500' : 'border-orange-200 bg-orange-50/50 hover:bg-orange-100/60 text-slate-800 font-medium'">
                                                     <input 
                                                         type="radio" 
@@ -711,20 +703,8 @@
                         @foreach($groupedChannels as $groupName => $channels)
                             <optgroup label="{{ $groupName }}">
                                 @foreach($channels as $channel)
-                                    @php
-                                        $feeNote = '';
-                                        $flat = (float)($channel['fee_flat'] ?? 0);
-                                        $pct = (float)($channel['fee_percent'] ?? 0);
-                                        if ($flat > 0 && $pct > 0) {
-                                            $feeNote = ' (+Rp ' . number_format($flat, 0, ',', '.') . ' + ' . $pct . '%)';
-                                        } elseif ($flat > 0) {
-                                            $feeNote = ' (+Rp ' . number_format($flat, 0, ',', '.') . ')';
-                                        } elseif ($pct > 0) {
-                                            $feeNote = ' (+' . $pct . '%)';
-                                        }
-                                    @endphp
                                     <option value="{{ $channel['code'] }}" {{ old('payment_method', 'QRIS') == $channel['code'] ? 'selected' : '' }}>
-                                        {{ $channel['name'] }}{{ $feeNote }}
+                                        {{ $channel['name'] }} ({{ $channel['code'] }})
                                     </option>
                                 @endforeach
                             </optgroup>
@@ -765,8 +745,6 @@
                             <span x-show="totalJerseySurcharges > 0">Upgrade Jersey: <strong class="text-orange-600 font-bold" x-text="formatRupiah(totalJerseySurcharges)"></strong></span>
                             <span>&bull;</span>
                             <span>SPX: <strong class="text-slate-700" x-text="formatRupiah(shippingCost)"></strong></span>
-                            <span x-show="gatewayFee > 0">&bull;</span>
-                            <span x-show="gatewayFee > 0">Biaya Bayar: <strong class="text-orange-600 font-bold" x-text="formatRupiah(gatewayFee)"></strong></span>
                         </div>
                         <div class="flex items-baseline gap-1.5">
                             <span class="text-xl sm:text-2xl font-black text-orange-600" x-text="formatRupiah(grandTotal)">

@@ -90,12 +90,8 @@ class SystemAuditFixesTest extends TestCase
         $this->assertEquals(0, Order::count());
     }
 
-    public function test_payment_gateway_fee_is_charged_accurately_to_buyer(): void
+    public function test_checkout_calculates_clean_grand_total_without_double_charging_gateway_fee(): void
     {
-        // 1. Checkout dengan QRIS (fee: flat 750 + 0.7%)
-        // Subtotal: 100.000
-        // Fee QRIS: 750 + (100.000 * 0.7%) = 750 + 700 = 1.450
-        // Grand Total: 101.450
         $payloadQris = [
             'buyer_name' => 'Buyer QRIS',
             'buyer_email' => 'qris@runner.com',
@@ -116,35 +112,8 @@ class SystemAuditFixesTest extends TestCase
 
         $orderQris = Order::where('customer_email', 'qris@runner.com')->firstOrFail();
         $this->assertEquals(100000, (int) $orderQris->subtotal);
-        $this->assertEquals(1450, (int) $orderQris->payment_gateway_fee);
-        $this->assertEquals(101450, (int) $orderQris->grand_total);
-
-        // 2. Checkout dengan BRIVA (fee: flat 3.000 + 0%)
-        // Subtotal: 100.000
-        // Fee BRIVA: 3.000
-        // Grand Total: 103.000
-        $payloadVa = [
-            'buyer_name' => 'Buyer VA',
-            'buyer_email' => 'va@runner.com',
-            'buyer_phone' => '081234567891',
-            'payment_method' => 'BRIVA',
-            'waiver_accepted' => '1',
-            'participants' => [
-                [
-                    'category_id' => $this->category->id,
-                    'bib_name' => 'VA RUNNER',
-                    'gender' => 'female',
-                ],
-            ],
-        ];
-
-        $resVa = $this->post(route('public.register.checkout', $this->event->slug), $payloadVa);
-        $resVa->assertRedirect();
-
-        $orderVa = Order::where('customer_email', 'va@runner.com')->firstOrFail();
-        $this->assertEquals(100000, (int) $orderVa->subtotal);
-        $this->assertEquals(3000, (int) $orderVa->payment_gateway_fee);
-        $this->assertEquals(103000, (int) $orderVa->grand_total);
+        $this->assertEquals(0, (int) $orderQris->payment_gateway_fee);
+        $this->assertEquals(100000, (int) $orderQris->grand_total);
     }
 
     public function test_email_jobs_implement_should_queue_with_retry_properties(): void

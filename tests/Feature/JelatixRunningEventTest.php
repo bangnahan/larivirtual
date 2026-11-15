@@ -342,10 +342,10 @@ class JelatixRunningEventTest extends TestCase
         $this->assertEquals('pending', $order->status);
         $this->assertEquals(2, $order->participants()->count());
 
-        // Price: 250.000 + 150.000 = 400.000; total = 400.000 + 3.550 (biaya QRIS: 750 + 0.7%) = 403.550
+        // Price: 250.000 + 150.000 = 400.000; total = 400.000
         $this->assertEquals(400000, $order->subtotal);
-        $this->assertEquals(3550, (int) $order->payment_gateway_fee);
-        $this->assertEquals(403550, (int) $order->grand_total);
+        $this->assertEquals(0, (int) $order->payment_gateway_fee);
+        $this->assertEquals(400000, (int) $order->grand_total);
 
         // Check quota increments
         $this->assertEquals(1, $this->category->fresh()->slots_taken);
