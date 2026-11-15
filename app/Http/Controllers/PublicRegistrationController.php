@@ -467,6 +467,7 @@ class PublicRegistrationController extends Controller
                     'payment_gateway_fee' => $paymentGatewayFee,
                     'grand_total' => $grandTotal,
                     'status' => 'pending',
+                    'expired_at' => now()->addMinutes((int) config('tripay.expiry_minutes', 60)),
                     'ip_address' => $request->ip(),
                     'user_agent' => $request->userAgent(),
                     'fbp' => $request->cookie('_fbp') ?: $request->input('_fbp'),

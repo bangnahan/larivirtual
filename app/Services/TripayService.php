@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Order;
 use Exception;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -26,7 +27,7 @@ class TripayService
         $this->merchantCode = config('tripay.merchant_code', '');
         $mode = config('tripay.mode', 'sandbox');
         $this->baseUrl = config("tripay.endpoints.{$mode}", 'https://tripay.co.id/api-sandbox');
-        $this->expiryMinutes = (int) config('tripay.expiry_minutes', 30);
+        $this->expiryMinutes = (int) config('tripay.expiry_minutes', 60);
     }
 
     /**
@@ -463,6 +464,11 @@ class TripayService
                     ? (float) $data['total_amount']
                     : (float) $order->grand_total + $feeCustomer;
 
+                $rawExpiredTime = $data['expired_time'] ?? $expiredTime;
+                $expiredAt = is_numeric($rawExpiredTime)
+                    ? Carbon::createFromTimestamp((int) $rawExpiredTime, config('app.timezone', 'Asia/Jakarta'))
+                    : now()->addMinutes($this->expiryMinutes);
+
                 $order->update([
                     'tripay_reference' => $data['reference'] ?? null,
                     'tripay_payment_method' => $paymentMethod,
@@ -471,7 +477,7 @@ class TripayService
                     'tripay_checkout_url' => $data['checkout_url'] ?? null,
                     'payment_gateway_fee' => $feeCustomer,
                     'grand_total' => $finalGrandTotal,
-                    'expired_at' => now()->createFromTimestamp($data['expired_time'] ?? $expiredTime),
+                    'expired_at' => $expiredAt,
                 ]);
 
                 return $data;

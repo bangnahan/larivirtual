@@ -194,6 +194,63 @@ class SystemAuditFixesTest extends TestCase
         $this->assertEquals(203000, (int) $order->grand_total);
     }
 
+    public function test_order_expiry_time_is_properly_stored_in_wib_timezone(): void
+    {
+        $order = Order::create([
+            'event_id' => $this->event->id,
+            'order_code' => 'JLTX-TIMEZONE-TEST',
+            'customer_name' => 'WIB Tester',
+            'customer_email' => 'wib@runner.com',
+            'customer_phone' => '08123456789',
+            'subtotal' => 200000,
+            'grand_total' => 200000,
+            'status' => 'pending',
+        ]);
+
+        $futureTimestamp = now()->addHour()->timestamp;
+
+        Http::fake([
+            '*/transaction/create' => Http::response([
+                'success' => true,
+                'data' => [
+                    'reference' => 'DEV-TZ123',
+                    'merchant_ref' => 'JLTX-TIMEZONE-TEST',
+                    'payment_method' => 'BRIVA',
+                    'amount' => 200000,
+                    'total_amount' => 200000,
+                    'expired_time' => $futureTimestamp,
+                ],
+            ], 200),
+        ]);
+
+        $tripayService = new class extends TripayService
+        {
+            public function __construct()
+            {
+                $this->apiKey = 'test-api-key';
+                $this->privateKey = 'test-private-key';
+                $this->merchantCode = 'T123';
+                $this->baseUrl = 'https://tripay.co.id/api-sandbox';
+                $this->expiryMinutes = 60;
+            }
+        };
+
+        $tripayService->createTransaction($order, 'BRIVA');
+
+        $order->refresh();
+
+        $this->assertNotNull($order->expired_at);
+        // Pastikan selisih waktu expired_at dengan waktu sekarang adalah sekitar 60 menit (59-60 menit)
+        $diffMinutes = (int) now()->diffInMinutes($order->expired_at, false);
+        $this->assertGreaterThanOrEqual(59, $diffMinutes);
+        $this->assertLessThanOrEqual(61, $diffMinutes);
+
+        // Pastikan ketika di-render ke email template, format jam sesuai WIB dan bukan UTC mundur 7 jam
+        $expectedWibHour = now()->addHour()->setTimezone('Asia/Jakarta')->format('H:i');
+        $renderedWibHour = $order->expired_at->setTimezone('Asia/Jakarta')->format('H:i');
+        $this->assertEquals($expectedWibHour, $renderedWibHour);
+    }
+
     public function test_email_jobs_implement_should_queue_with_retry_properties(): void
     {
         $dummyOrder = Order::create([
