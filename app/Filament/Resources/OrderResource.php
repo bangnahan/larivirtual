@@ -12,6 +12,7 @@ use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class OrderResource extends Resource
@@ -317,19 +318,33 @@ class OrderResource extends Resource
                             ->visible(fn (Forms\Get $get) => $get('new_status') === 'paid'),
                     ])
                     ->action(function (Order $record, array $data, OrderManagementService $service) {
-                        $service->updateStatus(
-                            order: $record,
-                            newStatus: $data['new_status'],
-                            reason: $data['reason'],
-                            adminName: auth()->user()?->name ?? 'Admin',
-                            sendTicketEmail: (bool) ($data['send_ticket_email'] ?? true)
-                        );
+                        try {
+                            $service->updateStatus(
+                                order: $record,
+                                newStatus: $data['new_status'],
+                                reason: $data['reason'],
+                                adminName: auth()->user()?->name ?? 'Admin',
+                                sendTicketEmail: (bool) ($data['send_ticket_email'] ?? true)
+                            );
 
-                        Notification::make()
-                            ->title('Status Transaksi Berhasil Diperbarui')
-                            ->body("Pesanan #{$record->order_code} kini berstatus: ".strtoupper($data['new_status']))
-                            ->success()
-                            ->send();
+                            Notification::make()
+                                ->title('Status Transaksi Berhasil Diperbarui')
+                                ->body("Pesanan #{$record->order_code} kini berstatus: ".strtoupper($data['new_status']))
+                                ->success()
+                                ->send();
+                        } catch (\Throwable $e) {
+                            Log::error("Gagal mengubah status pesanan #{$record->id}: ".$e->getMessage(), [
+                                'order_code' => $record->order_code,
+                                'trace' => $e->getTraceAsString(),
+                            ]);
+
+                            Notification::make()
+                                ->title('Gagal Memperbarui Status Transaksi')
+                                ->body('Terjadi kesalahan: '.$e->getMessage())
+                                ->danger()
+                                ->persistent()
+                                ->send();
+                        }
                     }),
 
                 Tables\Actions\EditAction::make(),

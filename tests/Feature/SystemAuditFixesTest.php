@@ -8,6 +8,8 @@ use App\Models\Event;
 use App\Models\EventCategory;
 use App\Models\Order;
 use App\Models\Organizer;
+use App\Models\Participant;
+use App\Services\OrderManagementService;
 use App\Services\TripayService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -293,5 +295,63 @@ class SystemAuditFixesTest extends TestCase
 
         // 3. Pastikan respons tidak membocorkan field 'output'
         $this->assertArrayNotHasKey('output', $resPing->json());
+    }
+
+    public function test_order_management_service_updates_status_and_assigns_bib(): void
+    {
+        $order = Order::create([
+            'event_id' => $this->event->id,
+            'order_code' => 'JLTX-STATUS-CHANGE-TEST',
+            'customer_name' => 'Status Change Runner',
+            'customer_email' => 'statuschange@runner.com',
+            'customer_phone' => '08123456789',
+            'subtotal' => 200000,
+            'grand_total' => 200000,
+            'status' => 'pending',
+        ]);
+
+        $participant = Participant::create([
+            'order_id' => $order->id,
+            'event_category_id' => $this->category->id,
+            'full_name' => 'Status Runner',
+            'gender' => 'male',
+            'birth_date' => '1995-05-15',
+            'phone' => '08123456789',
+            'email' => 'statuschange@runner.com',
+            'id_number' => '1234567890123456',
+            'emergency_contact_name' => 'Contact',
+            'emergency_contact_phone' => '08123456780',
+            'emergency_contact_relation' => 'Family',
+        ]);
+
+        $service = app(OrderManagementService::class);
+
+        // Ubah status ke paid
+        $service->updateStatus(
+            order: $order,
+            newStatus: 'paid',
+            reason: 'Verifikasi transfer manual',
+            adminName: 'Admin Tester',
+            sendTicketEmail: false
+        );
+
+        $order->refresh();
+        $participant->refresh();
+
+        $this->assertEquals('paid', $order->status);
+        $this->assertNotNull($participant->bib_number);
+        $this->assertTrue(is_numeric($participant->bib_number));
+
+        // Ubah status ke cancelled
+        $service->updateStatus(
+            order: $order,
+            newStatus: 'cancelled',
+            reason: 'Peserta membatalkan',
+            adminName: 'Admin Tester',
+            sendTicketEmail: false
+        );
+
+        $order->refresh();
+        $this->assertEquals('cancelled', $order->status);
     }
 }

@@ -134,16 +134,16 @@ class OrderManagementService
     protected function releaseSlotsAndStock(Order $order): void
     {
         foreach ($order->participants as $participant) {
-            if ($participant->category) {
+            if ($participant->category && $participant->category->slots_taken > 0) {
                 $participant->category->decrement('slots_taken', 1);
             }
-            if ($participant->jerseySize) {
+            if ($participant->jerseySize && $participant->jerseySize->allocated_stock > 0) {
                 $participant->jerseySize->decrement('allocated_stock', 1);
             }
         }
 
         foreach ($order->addons as $addonItem) {
-            if ($addonItem->eventAddon) {
+            if ($addonItem->eventAddon && $addonItem->eventAddon->allocated_stock >= $addonItem->quantity) {
                 $addonItem->eventAddon->decrement('allocated_stock', $addonItem->quantity);
             }
         }

@@ -51,17 +51,31 @@ class BibGeneratorService
             } else {
                 // Mode Virtual Run Sederhana: Numerik murni tanpa prefix (1001, 1002, ...)
                 $startNum = (int) ($category?->bib_start_number ?: 1001);
-                $maxBib = DB::table('participants')
+                $driver = DB::connection()->getDriverName();
+
+                $query = DB::table('participants')
                     ->whereNotNull('bib_number')
-                    ->whereRaw("bib_number GLOB '[0-9]*' AND bib_number NOT LIKE '%-%' AND bib_number NOT LIKE '%K%' AND LENGTH(bib_number) <= 8")
-                    ->selectRaw('MAX(CAST(bib_number AS INTEGER)) as max_bib')
-                    ->value('max_bib');
+                    ->where('bib_number', '!=', '')
+                    ->where('id', '!=', $participant->id);
+
+                if ($driver === 'sqlite') {
+                    $maxBib = $query
+                        ->whereRaw("bib_number GLOB '[0-9]*' AND bib_number NOT LIKE '%-%' AND LENGTH(bib_number) <= 8")
+                        ->selectRaw('MAX(CAST(bib_number AS INTEGER)) as max_bib')
+                        ->value('max_bib');
+                } else {
+                    // MySQL, MariaDB, etc.
+                    $maxBib = $query
+                        ->whereRaw("bib_number REGEXP '^[0-9]+$' AND LENGTH(bib_number) <= 8")
+                        ->selectRaw('MAX(CAST(bib_number AS UNSIGNED)) as max_bib')
+                        ->value('max_bib');
+                }
 
                 $candidateNum = ($maxBib && (int) $maxBib >= $startNum) ? ((int) $maxBib + 1) : $startNum;
 
                 while (in_array($candidateNum, $reservedPool) ||
                        in_array((string) $candidateNum, $reservedPool) ||
-                       DB::table('participants')->where('bib_number', (string) $candidateNum)->exists()) {
+                       DB::table('participants')->where('bib_number', (string) $candidateNum)->where('id', '!=', $participant->id)->exists()) {
                     $candidateNum++;
                 }
 
