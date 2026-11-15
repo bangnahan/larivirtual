@@ -371,7 +371,7 @@ class EventResource extends Resource
                                             ->visibility('public')
                                             ->directory('events/ebib-backgrounds')
                                             ->maxSize(3072)
-                                            ->helperText('Format: JPG / PNG (Maks. 3 MB). Template nomor dada resmi (rasio 2:1 atau landscape, misal 1200x600 px). Nomor BIB, Nama Pelari, dan Kategori akan dicetak di atas background ini.'),
+                                            ->helperText('Format: JPG / PNG (Maks. 3 MB). Standar resmi nomor dada lari: Kertas A5 Landscape (210 x 148 mm atau rasio 1.414 : 1). Rekomendasi resolusi cetak tajam 300 DPI: 2480 x 1748 px (atau minimal 1240 x 874 px). Nomor BIB, Nama Pelari, dan QR Code akan dicetak di atas background ini.'),
 
                                         Forms\Components\FileUpload::make('certificate_background_path')
                                             ->label('Background Desain E-Sertifikat Finisher')
