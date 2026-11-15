@@ -82,8 +82,18 @@ class TripayWebhookController extends Controller
 
         try {
             if ($tripayStatus === 'PAID') {
+                $updateData = [];
                 if (! empty($data['reference'])) {
-                    $order->update(['tripay_reference' => $data['reference']]);
+                    $updateData['tripay_reference'] = $data['reference'];
+                }
+                if (! empty($data['total_amount']) && (float) $data['total_amount'] > 0) {
+                    $updateData['grand_total'] = (float) $data['total_amount'];
+                }
+                if (! empty($data['fee_customer'])) {
+                    $updateData['payment_gateway_fee'] = (float) $data['fee_customer'];
+                }
+                if (! empty($updateData)) {
+                    $order->update($updateData);
                 }
 
                 $this->orderManagementService->updateStatus(

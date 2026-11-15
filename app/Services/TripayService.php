@@ -458,12 +458,19 @@ class TripayService
             if ($response->successful() && $response->json('success') === true) {
                 $data = $response->json('data');
 
+                $feeCustomer = (float) ($data['fee_customer'] ?? 0);
+                $finalGrandTotal = isset($data['total_amount']) && (float) $data['total_amount'] > 0
+                    ? (float) $data['total_amount']
+                    : (float) $order->grand_total + $feeCustomer;
+
                 $order->update([
                     'tripay_reference' => $data['reference'] ?? null,
                     'tripay_payment_method' => $paymentMethod,
                     'tripay_pay_code' => $data['pay_code'] ?? null,
                     'tripay_qr_url' => $data['qr_url'] ?? null,
                     'tripay_checkout_url' => $data['checkout_url'] ?? null,
+                    'payment_gateway_fee' => $feeCustomer,
+                    'grand_total' => $finalGrandTotal,
                     'expired_at' => now()->createFromTimestamp($data['expired_time'] ?? $expiredTime),
                 ]);
 

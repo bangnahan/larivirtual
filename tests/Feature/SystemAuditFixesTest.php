@@ -8,8 +8,10 @@ use App\Models\Event;
 use App\Models\EventCategory;
 use App\Models\Order;
 use App\Models\Organizer;
+use App\Services\TripayService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
 class SystemAuditFixesTest extends TestCase
@@ -114,6 +116,82 @@ class SystemAuditFixesTest extends TestCase
         $this->assertEquals(100000, (int) $orderQris->subtotal);
         $this->assertEquals(0, (int) $orderQris->payment_gateway_fee);
         $this->assertEquals(100000, (int) $orderQris->grand_total);
+    }
+
+    public function test_tripay_response_syncs_official_bill_amount_and_fee_to_order(): void
+    {
+        $order = Order::create([
+            'event_id' => $this->event->id,
+            'order_code' => 'JLTX-SYNC-TEST',
+            'customer_name' => 'Sync Tester',
+            'customer_email' => 'synctest@runner.com',
+            'customer_phone' => '08123456789',
+            'subtotal' => 200000,
+            'grand_total' => 200000,
+            'status' => 'pending',
+        ]);
+
+        Http::fake([
+            '*/transaction/create' => Http::response([
+                'success' => true,
+                'data' => [
+                    'reference' => 'DEV-T998877',
+                    'merchant_ref' => 'JLTX-SYNC-TEST',
+                    'payment_method' => 'BRIVA',
+                    'amount' => 200000,
+                    'fee_customer' => 3000,
+                    'total_fee' => 3000,
+                    'total_amount' => 203000,
+                    'pay_code' => '12800998877',
+                    'checkout_url' => 'https://tripay.co.id/checkout/DEV-T998877',
+                    'expired_time' => now()->addHour()->timestamp,
+                ],
+            ], 200),
+        ]);
+
+        $service = new class extends TripayService
+        {
+            public function callCreateDirect(Order $order, string $method)
+            {
+                $merchantRef = $order->order_code;
+                $amount = (int) round($order->grand_total);
+                $expiredTime = now()->addMinutes($this->expiryMinutes)->timestamp;
+                $orderItems = $this->prepareOrderItems($order);
+
+                $response = Http::post("{$this->baseUrl}/transaction/create", [
+                    'method' => $method,
+                    'merchant_ref' => $merchantRef,
+                    'amount' => $amount,
+                    'order_items' => $orderItems,
+                ]);
+
+                if ($response->successful() && $response->json('success') === true) {
+                    $data = $response->json('data');
+                    $feeCustomer = (float) ($data['fee_customer'] ?? 0);
+                    $finalGrandTotal = isset($data['total_amount']) && (float) $data['total_amount'] > 0
+                        ? (float) $data['total_amount']
+                        : (float) $order->grand_total + $feeCustomer;
+
+                    $order->update([
+                        'tripay_reference' => $data['reference'] ?? null,
+                        'tripay_payment_method' => $method,
+                        'tripay_pay_code' => $data['pay_code'] ?? null,
+                        'tripay_checkout_url' => $data['checkout_url'] ?? null,
+                        'payment_gateway_fee' => $feeCustomer,
+                        'grand_total' => $finalGrandTotal,
+                    ]);
+
+                    return $data;
+                }
+            }
+        };
+
+        $service->callCreateDirect($order, 'BRIVA');
+
+        $order->refresh();
+        $this->assertEquals(200000, (int) $order->subtotal);
+        $this->assertEquals(3000, (int) $order->payment_gateway_fee);
+        $this->assertEquals(203000, (int) $order->grand_total);
     }
 
     public function test_email_jobs_implement_should_queue_with_retry_properties(): void
