@@ -59,9 +59,11 @@ class EventPreviewController extends Controller
             'name' => '10K Virtual Run',
             'distance_km' => 10,
         ]);
+        $category->setRelation('event', $event);
         $dummyParticipant->setRelation('category', $category);
+        $dummyParticipant->setRelation('event', $event);
 
-        $pdfBinary = $ebibService->generateEbibPdf($dummyParticipant);
+        $pdfBinary = $ebibService->generateEbibPdf($dummyParticipant, $event);
 
         return response($pdfBinary, 200, [
             'Content-Type' => 'application/pdf',

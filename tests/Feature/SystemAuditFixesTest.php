@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Filament\Resources\EventResource\Pages\EditEvent;
 use App\Jobs\SendPaymentPendingEmailJob;
 use App\Jobs\SendTicketEmailJob;
 use App\Models\Event;
@@ -9,12 +10,15 @@ use App\Models\EventCategory;
 use App\Models\Order;
 use App\Models\Organizer;
 use App\Models\Participant;
+use App\Models\User;
 use App\Services\EbibPdfService;
 use App\Services\OrderManagementService;
 use App\Services\TripayService;
+use Filament\Facades\Filament;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 class SystemAuditFixesTest extends TestCase
@@ -435,5 +439,36 @@ class SystemAuditFixesTest extends TestCase
         ]));
         $responseParamPreview->assertStatus(200);
         $responseParamPreview->assertHeader('Content-Type', 'application/pdf');
+
+        // Test Filament EditEvent page loads without error
+        $admin = User::factory()->create(['role' => 'superadmin', 'is_active' => true]);
+        Filament::setCurrentPanel(Filament::getPanel('admin'));
+        // Test updating event with ebib_text_color
+        $this->event->update(['ebib_layout_config' => ['text_color' => '#f59e0b', 'bib_top_mm' => 50]]);
+        $this->assertEquals('#f59e0b', $this->event->fresh()->ebib_text_color);
+
+        // Test Filament EditEvent form fill and save mutations
+        $this->event->update([
+            'racepack_delivery_start_date' => now()->addDays(5),
+            'racepack_delivery_end_date' => now()->addDays(15),
+        ]);
+
+        $admin = User::factory()->create(['role' => 'superadmin', 'is_active' => true]);
+        Filament::setCurrentPanel(Filament::getPanel('admin'));
+        Livewire::actingAs($admin)
+            ->test(EditEvent::class, [
+                'record' => $this->event->getRouteKey(),
+            ])
+            ->assertSet('data.ebib_text_color', '#f59e0b')
+            ->assertSet('data.ebib_bib_top_mm', 50)
+            ->fillForm([
+                'ebib_text_color' => '#0f172a',
+                'ebib_bib_top_mm' => 60,
+            ])
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        $this->assertEquals('#0f172a', $this->event->fresh()->ebib_text_color);
+        $this->assertEquals(60, $this->event->fresh()->ebib_bib_top_mm);
     }
 }

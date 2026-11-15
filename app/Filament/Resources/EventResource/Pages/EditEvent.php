@@ -25,19 +25,45 @@ class EditEvent extends EditRecord
 
     protected function mutateFormDataBeforeFill(array $data): array
     {
-        if (empty($data['ebib_layout_config']) && ! empty($this->record->ebib_layout_config)) {
-            $data['ebib_layout_config'] = $this->record->ebib_layout_config;
-        }
+        $config = is_array($this->record->ebib_layout_config) ? $this->record->ebib_layout_config : [];
+
+        $data['ebib_text_color'] = $config['text_color'] ?? '#ffffff';
+        $data['ebib_bib_top_mm'] = $config['bib_top_mm'] ?? 45;
+        $data['ebib_bib_font_size_pt'] = $config['bib_font_size_pt'] ?? 64;
+        $data['ebib_name_top_mm'] = $config['name_top_mm'] ?? 82;
+        $data['ebib_name_font_size_pt'] = $config['name_font_size_pt'] ?? 18;
+        $data['ebib_show_event_title'] = $config['show_event_title'] ?? false;
+        $data['ebib_show_category_badge'] = $config['show_category_badge'] ?? true;
+        $data['ebib_show_qr_code'] = $config['show_qr_code'] ?? true;
+        $data['ebib_show_pin_holes'] = $config['show_pin_holes'] ?? true;
 
         return $data;
     }
 
     protected function mutateFormDataBeforeSave(array $data): array
     {
-        if (isset($data['ebib_layout_config']) && is_array($data['ebib_layout_config'])) {
-            $existing = is_array($this->record->ebib_layout_config) ? $this->record->ebib_layout_config : [];
-            $data['ebib_layout_config'] = array_merge($existing, $data['ebib_layout_config']);
+        $config = is_array($this->record->ebib_layout_config) ? $this->record->ebib_layout_config : [];
+
+        $ebibMap = [
+            'ebib_text_color' => 'text_color',
+            'ebib_bib_top_mm' => 'bib_top_mm',
+            'ebib_bib_font_size_pt' => 'bib_font_size_pt',
+            'ebib_name_top_mm' => 'name_top_mm',
+            'ebib_name_font_size_pt' => 'name_font_size_pt',
+            'ebib_show_event_title' => 'show_event_title',
+            'ebib_show_category_badge' => 'show_category_badge',
+            'ebib_show_qr_code' => 'show_qr_code',
+            'ebib_show_pin_holes' => 'show_pin_holes',
+        ];
+
+        foreach ($ebibMap as $formKey => $configKey) {
+            if (array_key_exists($formKey, $data)) {
+                $config[$configKey] = $data[$formKey];
+                unset($data[$formKey]);
+            }
         }
+
+        $data['ebib_layout_config'] = $config;
 
         return $data;
     }

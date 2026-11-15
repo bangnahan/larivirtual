@@ -240,11 +240,11 @@
     @if($showEventTitle || $showCategoryBadge)
         <div class="top-header">
             @if($showEventTitle)
-                <h1 class="event-title">{{ $event->title }}</h1>
+                <h1 class="event-title">{{ $event?->title ?? 'Virtual Run' }}</h1>
             @endif
             @if($showCategoryBadge)
                 <div class="category-badge">
-                    {{ $category->name }} ({{ $category->distance_km }} KM)
+                    {{ $category?->name ?? 'Open Category' }} ({{ $category?->distance_km ?? 0 }} KM)
                 </div>
             @endif
         </div>
@@ -273,8 +273,8 @@
                         @if(empty($ebibBgBase64))
                             <div class="event-type-tag">
                                 OFFICIAL RACER &bull; VIRTUAL RUN CHALLENGE<br>
-                                Periode: {{ $event->race_start_date ? \Illuminate\Support\Carbon::parse($event->race_start_date)->format('d M Y') : 'Kapan Saja' }}
-                                @if($event->race_end_date)
+                                Periode: {{ $event?->race_start_date ? \Illuminate\Support\Carbon::parse($event->race_start_date)->format('d M Y') : 'Kapan Saja' }}
+                                @if($event?->race_end_date)
                                     s/d {{ \Illuminate\Support\Carbon::parse($event->race_end_date)->format('d M Y') }}
                                 @endif
                             </div>
