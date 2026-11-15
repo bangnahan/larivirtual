@@ -29,7 +29,16 @@ class Event extends Model
         'auto_assign_bib' => 'boolean',
         'is_meta_capi_enabled' => 'boolean',
         'is_featured' => 'boolean',
+        'ebib_layout_config' => 'array',
     ];
+
+    /**
+     * Dapatkan nilai konfigurasi layout e-BIB
+     */
+    public function getEbibConfig(string $key, mixed $default = null): mixed
+    {
+        return data_get($this->ebib_layout_config, $key, $default);
+    }
 
     /**
      * Cek apakah event ini mengaktifkan background e-BIB kustom

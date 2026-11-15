@@ -3,6 +3,21 @@
 <head>
     <meta charset="utf-8">
     <title>E-BIB {{ $participant->bib_number }} - {{ $participant->bib_name ?: $participant->full_name }}</title>
+    @php
+        $ebibBgBase64 = $event?->getEbibBackgroundBase64();
+        $textColor = $event?->getEbibConfig('text_color', '#ffffff');
+        $bibTopMm = (int) $event?->getEbibConfig('bib_top_mm', 45);
+        $bibFontSizePt = (int) $event?->getEbibConfig('bib_font_size_pt', 64);
+        $nameTopMm = (int) $event?->getEbibConfig('name_top_mm', 82);
+        $nameFontSizePt = (int) $event?->getEbibConfig('name_font_size_pt', 18);
+        $showEventTitle = (bool) $event?->getEbibConfig('show_event_title', false);
+        $showCategoryBadge = (bool) $event?->getEbibConfig('show_category_badge', true);
+        $showQrCode = (bool) $event?->getEbibConfig('show_qr_code', true);
+        $showPinHoles = (bool) $event?->getEbibConfig('show_pin_holes', true);
+        
+        $isDarkText = in_array(strtolower($textColor), ['#000000', '#0f172a', '#1e293b', '#334155', 'black']);
+        $textShadow = $isDarkText ? 'none' : '0 3px 8px rgba(0, 0, 0, 0.85)';
+    @endphp
     <style>
         @page {
             margin: 0;
@@ -19,7 +34,7 @@
             height: 148mm;
             font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
             background-color: #0f172a;
-            color: #ffffff;
+            color: {{ $textColor }};
             position: relative;
             overflow: hidden;
         }
@@ -39,7 +54,6 @@
             object-fit: cover;
         }
 
-        /* Default Decorative Background if no image uploaded */
         .default-bg {
             width: 100%;
             height: 100%;
@@ -63,12 +77,12 @@
             background: #ea580c;
         }
 
-        /* Pin Hole Marks for realistic physical printing */
+        /* Pin Hole Marks */
         .pin-hole {
             position: absolute;
             width: 6mm;
             height: 6mm;
-            border: 1.5px dashed rgba(255, 255, 255, 0.4);
+            border: 1.5px dashed {{ $isDarkText ? 'rgba(0, 0, 0, 0.3)' : 'rgba(255, 255, 255, 0.4)' }};
             border-radius: 50%;
             z-index: 10;
         }
@@ -77,86 +91,90 @@
         .pin-bottom-left { bottom: 6mm; left: 6mm; }
         .pin-bottom-right { bottom: 6mm; right: 6mm; }
 
-        /* Content Container */
-        .content-layer {
+        /* Top Header Area */
+        .top-header {
             position: absolute;
-            top: 0;
-            left: 0;
-            width: 210mm;
-            height: 148mm;
-            z-index: 5;
-            padding: 10mm 14mm 8mm 14mm;
-            display: table;
-        }
-        .content-wrapper {
-            display: table-cell;
-            vertical-align: middle;
+            top: 10mm;
+            left: 12mm;
+            right: 12mm;
             text-align: center;
-        }
-
-        /* Event Header */
-        .event-header {
-            margin-bottom: 2mm;
+            z-index: 5;
         }
         .event-title {
-            font-size: 14pt;
+            font-size: 13pt;
             font-weight: 900;
-            letter-spacing: 1.5px;
+            letter-spacing: 1px;
             text-transform: uppercase;
-            color: #ffffff;
-            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
+            color: {{ $textColor }};
+            text-shadow: {{ $textShadow }};
             margin: 0;
         }
         .category-badge {
             display: inline-block;
             background: #ea580c;
             color: #ffffff;
-            font-size: 9pt;
+            font-size: 8.5pt;
             font-weight: 800;
             letter-spacing: 1px;
-            padding: 2mm 6mm;
-            border-radius: 4mm;
+            padding: 1.5mm 5mm;
+            border-radius: 3mm;
             text-transform: uppercase;
             margin-top: 1.5mm;
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
         }
 
-        /* Giant Hero BIB Number */
+        /* Dynamic Positioned BIB Box */
         .bib-box {
-            margin: 3mm 0 2mm 0;
+            position: absolute;
+            top: {{ $bibTopMm }}mm;
+            left: 10mm;
+            right: 10mm;
+            text-align: center;
             line-height: 1;
+            z-index: 5;
         }
         .bib-number {
-            font-size: 64pt;
+            font-size: {{ $bibFontSizePt }}pt;
             font-weight: 900;
             letter-spacing: 4px;
-            color: #ffffff;
+            color: {{ $textColor }};
             font-family: 'Arial Black', Impact, 'Helvetica Neue', sans-serif;
-            text-shadow: 0 4px 10px rgba(0, 0, 0, 0.9), 0 0 20px rgba(0,0,0,0.6);
+            text-shadow: {{ $textShadow }};
             margin: 0;
             padding: 0;
         }
 
-        /* Runner Name */
+        /* Dynamic Positioned Runner Name Box */
         .runner-box {
-            margin-top: 1mm;
-            margin-bottom: 4mm;
+            position: absolute;
+            top: {{ $nameTopMm }}mm;
+            left: 10mm;
+            right: 10mm;
+            text-align: center;
+            line-height: 1.2;
+            z-index: 5;
         }
         .runner-name {
-            font-size: 18pt;
+            font-size: {{ $nameFontSizePt }}pt;
             font-weight: 800;
             letter-spacing: 1px;
             text-transform: uppercase;
-            color: #ffedd5;
-            text-shadow: 0 2px 6px rgba(0, 0, 0, 0.9);
+            color: {{ $textColor }};
+            text-shadow: {{ $textShadow }};
             margin: 0;
         }
 
         /* Footer Meta & QR Section */
+        .footer-layer {
+            position: absolute;
+            bottom: 8mm;
+            left: 12mm;
+            right: 12mm;
+            z-index: 5;
+        }
         .footer-table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 2mm;
         }
         .footer-left {
             text-align: left;
@@ -173,12 +191,13 @@
             font-weight: 700;
             letter-spacing: 0.8px;
             text-transform: uppercase;
-            color: rgba(255, 255, 255, 0.8);
-            text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+            color: {{ $textColor }};
+            opacity: 0.85;
+            text-shadow: {{ $textShadow }};
         }
         .qr-image {
-            width: 18mm;
-            height: 18mm;
+            width: 17mm;
+            height: 17mm;
             background: #ffffff;
             padding: 1mm;
             border-radius: 2mm;
@@ -186,19 +205,16 @@
             display: inline-block;
         }
         .qr-caption {
-            font-size: 6pt;
-            color: rgba(255, 255, 255, 0.75);
+            font-size: 5.5pt;
+            color: {{ $textColor }};
+            opacity: 0.75;
             margin-top: 1mm;
             letter-spacing: 0.5px;
-            text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+            text-shadow: {{ $textShadow }};
         }
     </style>
 </head>
 <body>
-
-    @php
-        $ebibBgBase64 = $event?->getEbibBackgroundBase64();
-    @endphp
 
     <!-- BACKGROUND LAYER -->
     <div class="bg-layer">
@@ -212,57 +228,64 @@
         @endif
     </div>
 
-    <!-- CORNER PIN HOLES (SIMBOL NOMOR DADA LARI) -->
-    <div class="pin-hole pin-top-left"></div>
-    <div class="pin-hole pin-top-right"></div>
-    <div class="pin-hole pin-bottom-left"></div>
-    <div class="pin-hole pin-bottom-right"></div>
+    <!-- CORNER PIN HOLES -->
+    @if($showPinHoles)
+        <div class="pin-hole pin-top-left"></div>
+        <div class="pin-hole pin-top-right"></div>
+        <div class="pin-hole pin-bottom-left"></div>
+        <div class="pin-hole pin-bottom-right"></div>
+    @endif
 
-    <!-- CONTENT LAYER -->
-    <div class="content-layer">
-        <div class="content-wrapper">
-            
-            <!-- 1. Header: Event & Kategori -->
-            <div class="event-header">
+    <!-- TOP HEADER -->
+    @if($showEventTitle || $showCategoryBadge)
+        <div class="top-header">
+            @if($showEventTitle)
                 <h1 class="event-title">{{ $event->title }}</h1>
+            @endif
+            @if($showCategoryBadge)
                 <div class="category-badge">
-                    {{ $category->name }} ({{ $category->distance_km }} KM) &bull; {{ $event->submission_mode === 'CUMULATIVE' ? 'AKUMULASI JARAK' : 'SINGLE RUN' }}
+                    {{ $category->name }} ({{ $category->distance_km }} KM)
                 </div>
-            </div>
+            @endif
+        </div>
+    @endif
 
-            <!-- 2. Hero BIB Number -->
-            <div class="bib-box">
-                <div class="bib-number">{{ $participant->bib_number ?: 'RUNNER' }}</div>
-            </div>
+    <!-- HERO BIB NUMBER (DENGAN JARAK VERTIKAL DINAMIS) -->
+    <div class="bib-box">
+        <div class="bib-number">{{ $participant->bib_number ?: 'RUNNER' }}</div>
+    </div>
 
-            <!-- 3. Runner Name -->
-            <div class="runner-box">
-                <div class="runner-name">{{ $participant->bib_name ?: $participant->full_name }}</div>
-            </div>
+    <!-- RUNNER NAME (DENGAN JARAK VERTIKAL DINAMIS) -->
+    <div class="runner-box">
+        <div class="runner-name">{{ $participant->bib_name ?: $participant->full_name }}</div>
+    </div>
 
-            <!-- 4. Footer & QR Code -->
+    <!-- FOOTER META & QR CODE -->
+    @if($showQrCode || empty($ebibBgBase64))
+        <div class="footer-layer">
             <table class="footer-table">
                 <tr>
                     <td class="footer-left">
-                        <div class="event-type-tag">
-                            OFFICIAL RACER &bull; VIRTUAL RUN CHALLENGE<br>
-                            Periode: {{ $event->race_start_date ? \Illuminate\Support\Carbon::parse($event->race_start_date)->format('d M Y') : 'Kapan Saja' }}
-                            @if($event->race_end_date)
-                                s/d {{ \Illuminate\Support\Carbon::parse($event->race_end_date)->format('d M Y') }}
-                            @endif
-                        </div>
+                        @if(empty($ebibBgBase64))
+                            <div class="event-type-tag">
+                                OFFICIAL RACER &bull; VIRTUAL RUN CHALLENGE<br>
+                                Periode: {{ $event->race_start_date ? \Illuminate\Support\Carbon::parse($event->race_start_date)->format('d M Y') : 'Kapan Saja' }}
+                                @if($event->race_end_date)
+                                    s/d {{ \Illuminate\Support\Carbon::parse($event->race_end_date)->format('d M Y') }}
+                                @endif
+                            </div>
+                        @endif
                     </td>
                     <td class="footer-right">
-                        @if(!empty($qrCodeBase64))
+                        @if($showQrCode && !empty($qrCodeBase64))
                             <img class="qr-image" src="data:image/svg+xml;base64,{{ $qrCodeBase64 }}" alt="QR Code">
                             <div class="qr-caption">Scan Verifikasi</div>
                         @endif
                     </td>
                 </tr>
             </table>
-
         </div>
-    </div>
+    @endif
 
 </body>
 </html>

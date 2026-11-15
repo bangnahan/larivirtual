@@ -401,5 +401,25 @@ class SystemAuditFixesTest extends TestCase
         $responseBib = $this->get(route('public.ebib.download', '8888'));
         $responseBib->assertStatus(200);
         $responseBib->assertHeader('Content-Type', 'application/pdf');
+
+        // 4. Test custom ebib_layout_config
+        $this->event->update([
+            'ebib_layout_config' => [
+                'text_color' => '#0f172a',
+                'bib_top_mm' => 50,
+                'bib_font_size_pt' => 70,
+                'name_top_mm' => 90,
+                'name_font_size_pt' => 20,
+                'show_event_title' => false,
+                'show_category_badge' => true,
+                'show_qr_code' => false,
+                'show_pin_holes' => false,
+            ],
+        ]);
+
+        $customPdfBinary = $ebibService->generateEbibPdf($participant);
+        $this->assertNotEmpty($customPdfBinary);
+        $this->assertEquals('#0f172a', $this->event->fresh()->getEbibConfig('text_color'));
+        $this->assertEquals(50, $this->event->fresh()->getEbibConfig('bib_top_mm'));
     }
 }

@@ -383,6 +383,71 @@ class EventResource extends Resource
                                             ->maxSize(3072)
                                             ->helperText('Format: JPG / PNG (Maks. 3 MB). Template sertifikat resmi A4 Landscape (297 x 210 mm atau rasio 1.414, misal 2000x1414 px). Data Finisher, Nama, Jarak, Durasi, dan QR Token akan dicetak di atas background ini.'),
                                     ])->columns(2),
+
+                                Forms\Components\Section::make('Tata Letak & Tipografi Nomor E-BIB')
+                                    ->description('Sesuaikan posisi vertikal, ukuran font, dan warna teks agar pas dengan kotak kosong pada desain background E-BIB Anda (Standar Kertas A5 Landscape: 210 x 148 mm).')
+                                    ->schema([
+                                        Forms\Components\Select::make('ebib_layout_config.text_color')
+                                            ->label('Warna Teks Nomor & Nama')
+                                            ->options([
+                                                '#ffffff' => '⚪ Putih (#ffffff) - Untuk background gelap',
+                                                '#0f172a' => '⚫ Hitam Pekat (#0f172a) - Untuk background terang',
+                                                '#f59e0b' => '🟡 Kuning Emas (#f59e0b)',
+                                                '#ea580c' => '🟠 Oranye Virun (#ea580c)',
+                                                '#1e3a8a' => '🔵 Biru Navy (#1e3a8a)',
+                                            ])
+                                            ->default('#ffffff')
+                                            ->required(),
+
+                                        Forms\Components\TextInput::make('ebib_layout_config.bib_top_mm')
+                                            ->label('Posisi Nomor BIB dari Atas (mm)')
+                                            ->numeric()
+                                            ->default(45)
+                                            ->minValue(0)
+                                            ->maxValue(140)
+                                            ->helperText('Default: 45 mm dari tepi atas.'),
+
+                                        Forms\Components\TextInput::make('ebib_layout_config.bib_font_size_pt')
+                                            ->label('Ukuran Font Nomor BIB (pt)')
+                                            ->numeric()
+                                            ->default(64)
+                                            ->minValue(24)
+                                            ->maxValue(120)
+                                            ->helperText('Default: 64 pt.'),
+
+                                        Forms\Components\TextInput::make('ebib_layout_config.name_top_mm')
+                                            ->label('Posisi Nama Pelari dari Atas (mm)')
+                                            ->numeric()
+                                            ->default(82)
+                                            ->minValue(0)
+                                            ->maxValue(140)
+                                            ->helperText('Default: 82 mm dari tepi atas.'),
+
+                                        Forms\Components\TextInput::make('ebib_layout_config.name_font_size_pt')
+                                            ->label('Ukuran Font Nama Pelari (pt)')
+                                            ->numeric()
+                                            ->default(18)
+                                            ->minValue(10)
+                                            ->maxValue(40)
+                                            ->helperText('Default: 18 pt.'),
+
+                                        Forms\Components\Toggle::make('ebib_layout_config.show_event_title')
+                                            ->label('Tampilkan Teks Judul Event')
+                                            ->helperText('Matikan jika gambar background Anda sudah memiliki logo / judul event resmi.')
+                                            ->default(false),
+
+                                        Forms\Components\Toggle::make('ebib_layout_config.show_category_badge')
+                                            ->label('Tampilkan Badge Kategori Lari (misal: 10K)')
+                                            ->default(true),
+
+                                        Forms\Components\Toggle::make('ebib_layout_config.show_qr_code')
+                                            ->label('Tampilkan QR Code Verifikasi di Pojok')
+                                            ->default(true),
+
+                                        Forms\Components\Toggle::make('ebib_layout_config.show_pin_holes')
+                                            ->label('Tampilkan Tanda Lubang Peniti di 4 Sudut')
+                                            ->default(true),
+                                    ])->columns(2),
                             ]),
 
                         Forms\Components\Tabs\Tab::make('Meta CAPI & Tracking')
