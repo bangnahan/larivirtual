@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\EventPreviewController;
 use App\Http\Controllers\PublicLandingPageController;
 use App\Http\Controllers\PublicLeaderboardController;
 use App\Http\Controllers\PublicRegistrationController;
@@ -37,3 +38,6 @@ Route::get('/certificate/{bib}/download', [PublicSubmissionController::class, 'd
 
 // Live Leaderboard Publik Virtual Run
 Route::get('/events/{slug}/leaderboard', [PublicLeaderboardController::class, 'show'])->name('public.leaderboard.show');
+
+// Admin & Organizer: Pratinjau Desain E-BIB
+Route::get('/events/{event}/preview-ebib', [EventPreviewController::class, 'previewEbib'])->name('admin.events.preview_ebib');

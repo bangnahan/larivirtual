@@ -421,5 +421,19 @@ class SystemAuditFixesTest extends TestCase
         $this->assertNotEmpty($customPdfBinary);
         $this->assertEquals('#0f172a', $this->event->fresh()->getEbibConfig('text_color'));
         $this->assertEquals(50, $this->event->fresh()->getEbibConfig('bib_top_mm'));
+
+        // 5. Test Event preview route
+        $responsePreview = $this->get(route('admin.events.preview_ebib', $this->event));
+        $responsePreview->assertStatus(200);
+        $responsePreview->assertHeader('Content-Type', 'application/pdf');
+
+        // 6. Test Event preview route with query parameters override
+        $responseParamPreview = $this->get(route('admin.events.preview_ebib', [
+            'event' => $this->event,
+            'text_color' => '#f59e0b',
+            'bib_top_mm' => 65,
+        ]));
+        $responseParamPreview->assertStatus(200);
+        $responseParamPreview->assertHeader('Content-Type', 'application/pdf');
     }
 }
