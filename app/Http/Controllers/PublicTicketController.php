@@ -4,8 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Models\Order;
 use App\Models\Participant;
+use App\Services\EbibPdfService;
 use App\Services\TicketPdfService;
 use Illuminate\Http\Request;
+use Symfony\Component\HttpFoundation\Response;
 
 class PublicTicketController extends Controller
 {
@@ -67,6 +69,35 @@ class PublicTicketController extends Controller
         $pdfBinary = $this->ticketPdfService->generateTicketPdf($participant);
 
         $filename = 'E-Ticket-'.($participant->bib_number ?: $participant->id).'.pdf';
+
+        return response($pdfBinary, 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="'.$filename.'"',
+            'Cache-Control' => 'public, must-revalidate, max-age=0',
+        ]);
+    }
+
+    public function downloadEbibPdf(string $token, EbibPdfService $ebibPdfService): Response
+    {
+        $participant = Participant::where('qr_token', $token)
+            ->with(['order', 'category.event', 'jerseySize'])
+            ->first();
+
+        // Fallback: jika token adalah BIB number atau kode invoice pendaftaran
+        if (! $participant) {
+            $participant = Participant::where('bib_number', $token)
+                ->orWhereHas('order', fn ($q) => $q->where('order_code', $token))
+                ->with(['order', 'category.event', 'jerseySize'])
+                ->first();
+        }
+
+        if (! $participant) {
+            abort(404, 'Nomor E-BIB peserta tidak ditemukan. Pastikan pembayaran pendaftaran telah terverifikasi lunas.');
+        }
+
+        $pdfBinary = $ebibPdfService->generateEbibPdf($participant);
+
+        $filename = 'E-BIB-'.($participant->bib_number ?: $participant->id).'.pdf';
 
         return response($pdfBinary, 200, [
             'Content-Type' => 'application/pdf',

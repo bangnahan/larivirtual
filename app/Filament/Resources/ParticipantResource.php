@@ -188,6 +188,13 @@ class ParticipantResource extends Resource
                     ->url(fn (Participant $record): string => route('public.ticket.download', $record->qr_token))
                     ->openUrlInNewTab(),
 
+                Tables\Actions\Action::make('download_ebib')
+                    ->label('E-BIB PDF')
+                    ->icon('heroicon-o-identification')
+                    ->color('warning')
+                    ->url(fn (Participant $record): string => route('public.ebib.download', $record->qr_token))
+                    ->openUrlInNewTab(),
+
                 Tables\Actions\Action::make('resend_ticket')
                     ->label('Kirim Email Tiket')
                     ->icon('heroicon-o-envelope')

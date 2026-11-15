@@ -121,13 +121,20 @@
                                 Jersey: {{ $p->jersey_full_spec }}
                             </span>
 
-                            <div class="flex flex-col sm:flex-row gap-2.5 justify-center">
+                            <div class="flex flex-col sm:flex-row flex-wrap gap-2.5 justify-center">
                                 @if($p->bib_number)
                                     <a 
                                         href="{{ route('public.submit.index', ['bib' => $p->bib_number]) }}" 
                                         class="bg-orange-600 hover:bg-orange-500 active:scale-95 text-white font-bold py-2.5 px-4 rounded-xl text-xs transition shadow-md shadow-orange-600/30 flex items-center justify-center gap-1.5 cursor-pointer"
                                     >
-                                        <span>🏃 Lapor / Submit Aktivitas Lari</span>
+                                        <span>🏃 Lapor / Submit Hasil Lari</span>
+                                    </a>
+                                    <a 
+                                        href="{{ route('public.ebib.download', $p->qr_token) }}" 
+                                        class="bg-amber-500 hover:bg-amber-400 active:scale-95 text-slate-950 font-bold py-2.5 px-4 rounded-xl text-xs transition shadow-md shadow-amber-500/20 flex items-center justify-center gap-1.5 cursor-pointer"
+                                        title="Unduh E-BIB Nomor Dada resmi siap cetak"
+                                    >
+                                        <span>🎽 Unduh E-BIB (Cetak)</span>
                                     </a>
                                 @endif
                                 <a 
@@ -135,7 +142,7 @@
                                     class="bg-white/10 hover:bg-white/20 active:scale-95 text-white font-bold py-2.5 px-4 rounded-xl text-xs transition border border-white/20 flex items-center justify-center gap-1.5 cursor-pointer"
                                 >
                                     <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
-                                    <span>Unduh E-Ticket PDF</span>
+                                    <span>Unduh E-Ticket (Pass)</span>
                                 </a>
                             </div>
                         </div>

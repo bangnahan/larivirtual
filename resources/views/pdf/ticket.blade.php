@@ -285,20 +285,14 @@
             </tr>
         </table>
 
-        @php
-            $ebibBgBase64 = $event?->getEbibBackgroundBase64();
-        @endphp
         <!-- 2. BIB HERO BANNER -->
-        <div class="bib-banner" style="{{ $ebibBgBase64 ? 'background-image: url(' . $ebibBgBase64 . '); background-size: cover; background-position: center; border: 2px solid #ea580c; position: relative;' : '' }}">
-            @if($ebibBgBase64)
-                <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.45); z-index: 1;"></div>
-            @endif
-            <div style="position: relative; z-index: 2;">
+        <div class="bib-banner">
+            <div>
                 <div class="category-pill">
                     {{ $category->name }} ({{ $category->distance_km }} KM) &bull; {{ $event->submission_mode === 'CUMULATIVE' ? 'AKUMULASI JARAK' : 'SINGLE RUN' }}
                 </div>
-                <div class="bib-number" style="text-shadow: 0 2px 6px rgba(0,0,0,0.8);">{{ $participant->bib_number ?: 'SEDANG DI-GENERATE' }}</div>
-                <div class="bib-name" style="text-shadow: 0 2px 4px rgba(0,0,0,0.8);">{{ $participant->bib_name ?: $participant->full_name }}</div>
+                <div class="bib-number">{{ $participant->bib_number ?: 'SEDANG DI-GENERATE' }}</div>
+                <div class="bib-name">{{ $participant->bib_name ?: $participant->full_name }}</div>
             </div>
         </div>
 
@@ -397,7 +391,14 @@
             </tr>
         </table>
 
-        <!-- 4. FOOTER NOTICE -->
+        <!-- 4. FOOTER NOTICE & E-BIB DOWNLOAD LINK -->
+        <div style="background: #fff7ed; border: 1.5px dashed #ea580c; border-radius: 6px; padding: 6px 12px; margin: 8px 0; text-align: center;">
+            <span style="font-size: 8.5px; font-weight: 800; color: #c2410c; text-transform: uppercase;">🎽 Unduh Nomor Dada E-BIB Resmi (Siap Cetak / Pasang di Jersey):</span>
+            <div style="font-size: 8px; color: #7c2d12; margin-top: 2px;">
+                Akses link langsung: <strong>{{ route('public.ebib.download', $participant->qr_token) }}</strong>
+            </div>
+        </div>
+
         <div class="footer-notice">
             Nomor BIB resmi diterbitkan secara unik untuk pelaporan virtual run. Peserta berhak atas E-Sertifikat Finisher dan Finisher Medal setelah target jarak terpenuhi serta diverifikasi oleh panitia.
         </div>

@@ -52,10 +52,17 @@
                 if (str_contains($targetUrl, 'localhost') || str_contains($targetUrl, '127.0.0.1')) {
                     $targetUrl = str_replace(['http://localhost:8000', 'http://127.0.0.1:8000', 'http://localhost'], 'https://app.jelatix.com', $targetUrl);
                 }
+                $ebibUrl = route('public.ebib.download', $participant->qr_token);
+                if (str_contains($ebibUrl, 'localhost') || str_contains($ebibUrl, '127.0.0.1')) {
+                    $ebibUrl = str_replace(['http://localhost:8000', 'http://127.0.0.1:8000', 'http://localhost'], 'https://app.jelatix.com', $ebibUrl);
+                }
             @endphp
             <div style="text-align: center; margin: 28px 0;">
-                <a href="{{ $targetUrl }}" target="_blank" style="background-color: #2563eb; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 15px; display: inline-block; box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.2);">
-                    📥 Unduh E-Ticket Resmi (PDF)
+                <a href="{{ $ebibUrl }}" target="_blank" style="background-color: #ea580c; color: #ffffff; padding: 14px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 14px; display: inline-block; margin-bottom: 10px; margin-right: 6px; box-shadow: 0 4px 6px -1px rgba(234, 88, 12, 0.25);">
+                    🎽 Unduh Nomor Dada E-BIB (PDF)
+                </a>
+                <a href="{{ $targetUrl }}" target="_blank" style="background-color: #0f172a; color: #ffffff; padding: 14px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 14px; display: inline-block; box-shadow: 0 4px 6px -1px rgba(15, 23, 42, 0.2);">
+                    📥 Unduh E-Ticket Pass (PDF)
                 </a>
             </div>
 

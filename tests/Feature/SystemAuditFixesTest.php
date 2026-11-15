@@ -9,6 +9,7 @@ use App\Models\EventCategory;
 use App\Models\Order;
 use App\Models\Organizer;
 use App\Models\Participant;
+use App\Services\EbibPdfService;
 use App\Services\OrderManagementService;
 use App\Services\TripayService;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -353,5 +354,52 @@ class SystemAuditFixesTest extends TestCase
 
         $order->refresh();
         $this->assertEquals('cancelled', $order->status);
+    }
+
+    public function test_ebib_pdf_generation_and_download_route(): void
+    {
+        $order = Order::create([
+            'event_id' => $this->event->id,
+            'order_code' => 'JLTX-EBIB-TEST',
+            'customer_name' => 'EBIB Runner',
+            'customer_email' => 'ebib@runner.com',
+            'customer_phone' => '08123456789',
+            'subtotal' => 150000,
+            'grand_total' => 150000,
+            'status' => 'paid',
+        ]);
+
+        $participant = Participant::create([
+            'order_id' => $order->id,
+            'event_category_id' => $this->category->id,
+            'full_name' => 'Budi Santoso',
+            'bib_name' => 'BUDI RUNS',
+            'bib_number' => '8888',
+            'gender' => 'male',
+            'birth_date' => '1992-08-17',
+            'phone' => '08123456789',
+            'email' => 'ebib@runner.com',
+            'id_number' => '1234567890123456',
+            'emergency_contact_name' => 'Contact',
+            'emergency_contact_phone' => '08123456780',
+            'emergency_contact_relation' => 'Family',
+        ]);
+
+        // 1. Service EbibPdfService
+        $ebibService = app(EbibPdfService::class);
+        $pdfBinary = $ebibService->generateEbibPdf($participant);
+        $this->assertNotEmpty($pdfBinary);
+        $this->assertStringStartsWith('%PDF-', $pdfBinary);
+
+        // 2. Download route by QR token
+        $response = $this->get(route('public.ebib.download', $participant->qr_token));
+        $response->assertStatus(200);
+        $response->assertHeader('Content-Type', 'application/pdf');
+        $this->assertStringContainsString('E-BIB-8888.pdf', $response->headers->get('Content-Disposition'));
+
+        // 3. Download route by BIB number fallback
+        $responseBib = $this->get(route('public.ebib.download', '8888'));
+        $responseBib->assertStatus(200);
+        $responseBib->assertHeader('Content-Type', 'application/pdf');
     }
 }

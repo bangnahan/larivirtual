@@ -165,6 +165,13 @@
                                             >
                                                 <span>🏃 Lapor / Submit Lari</span>
                                             </a>
+                                            <a 
+                                                href="{{ route('public.ebib.download', $p->qr_token) }}" 
+                                                class="w-full inline-flex items-center justify-center gap-1.5 bg-amber-500 hover:bg-amber-400 active:scale-95 text-slate-950 font-bold px-4 py-2 rounded-xl text-xs transition shadow-sm cursor-pointer"
+                                                title="Unduh E-BIB Nomor Dada resmi siap cetak"
+                                            >
+                                                <span>🎽 Unduh E-BIB (Cetak Nomor Dada)</span>
+                                            </a>
                                         @endif
 
                                         <a 
@@ -172,7 +179,7 @@
                                             class="w-full inline-flex items-center justify-center gap-1.5 bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 font-bold px-4 py-2 rounded-xl text-xs transition border border-slate-300 cursor-pointer"
                                         >
                                             <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
-                                            <span>Unduh E-Ticket PDF</span>
+                                            <span>Unduh E-Ticket (Pass)</span>
                                         </a>
                                     </div>
                                 </div>

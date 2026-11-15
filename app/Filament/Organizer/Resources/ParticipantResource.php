@@ -8,6 +8,7 @@ use App\Models\EventCategory;
 use App\Models\Participant;
 use App\Services\BibGeneratorService;
 use App\Services\CertificatePdfService;
+use App\Services\EbibPdfService;
 use App\Services\MailketingService;
 use App\Services\TicketPdfService;
 use Filament\Forms;
@@ -206,6 +207,20 @@ class ParticipantResource extends Resource
                     ->action(function (Participant $record, TicketPdfService $ticketService): StreamedResponse {
                         $pdfBinary = $ticketService->generateTicketPdf($record);
                         $filename = 'E-Ticket-'.($record->bib_number ?: $record->id).'.pdf';
+
+                        return response()->streamDownload(function () use ($pdfBinary) {
+                            echo $pdfBinary;
+                        }, $filename, ['Content-Type' => 'application/pdf']);
+                    }),
+
+                // 2b. Action: Download E-BIB PDF
+                Tables\Actions\Action::make('download_ebib')
+                    ->label('PDF E-BIB')
+                    ->icon('heroicon-o-identification')
+                    ->color('warning')
+                    ->action(function (Participant $record, EbibPdfService $ebibService): StreamedResponse {
+                        $pdfBinary = $ebibService->generateEbibPdf($record);
+                        $filename = 'E-BIB-'.($record->bib_number ?: $record->id).'.pdf';
 
                         return response()->streamDownload(function () use ($pdfBinary) {
                             echo $pdfBinary;
