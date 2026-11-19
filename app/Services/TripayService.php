@@ -454,7 +454,7 @@ class TripayService
         try {
             $response = Http::withHeaders([
                 'Authorization' => 'Bearer '.$this->apiKey,
-            ])->timeout(10)->post("{$this->baseUrl}/transaction/create", $payload);
+            ])->retry(2, 1000)->timeout(25)->post("{$this->baseUrl}/transaction/create", $payload);
 
             if ($response->successful() && $response->json('success') === true) {
                 $data = $response->json('data');
