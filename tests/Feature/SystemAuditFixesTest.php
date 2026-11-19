@@ -477,4 +477,53 @@ class SystemAuditFixesTest extends TestCase
         $responseGetCheck->assertSee($participant->bib_name);
         $responseGetCheck->assertSee($participant->bib_number);
     }
+
+    public function test_activity_submission_accepts_leading_zero_duration_and_comma_distance(): void
+    {
+        $order = Order::create([
+            'event_id' => $this->event->id,
+            'order_code' => 'JLTX-SUBMIT-TEST',
+            'customer_name' => 'Runner Submitter',
+            'customer_email' => 'submitter@runner.com',
+            'customer_phone' => '08123456789',
+            'subtotal' => 150000,
+            'grand_total' => 150000,
+            'status' => 'paid',
+        ]);
+
+        $participant = Participant::create([
+            'order_id' => $order->id,
+            'event_category_id' => $this->category->id,
+            'full_name' => 'Runner Submitter',
+            'bib_name' => 'SUBMITTER',
+            'bib_number' => '1043',
+            'gender' => 'male',
+            'birth_date' => '1995-05-05',
+            'phone' => '08123456789',
+            'email' => 'submitter@runner.com',
+            'address' => 'Jl. Lari Sehat No. 1',
+            'city' => 'Jakarta',
+            'total_distance_km' => 0,
+            'total_duration_seconds' => 0,
+            'finisher_status' => 'in_progress',
+        ]);
+
+        // Submit form with hours='01', minutes='30', seconds='01', distance='10'
+        $response = $this->post(route('public.submit.store'), [
+            'bib_number' => '1043',
+            'activity_date' => now()->format('Y-m-d'),
+            'distance_km' => '10',
+            'hours' => '01',
+            'minutes' => '30',
+            'seconds' => '01',
+            'proof_url' => 'https://www.strava.com/activities/12345678',
+        ]);
+
+        $response->assertSessionHasNoErrors();
+        $response->assertRedirect(route('public.submit.index', ['bib' => '1043']));
+
+        $participant->refresh();
+        $this->assertEquals(10.0, (float) $participant->total_distance_km);
+        $this->assertEquals(5401, (int) $participant->total_duration_seconds); // 3600 + 1800 + 1
+    }
 }

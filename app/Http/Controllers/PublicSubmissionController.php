@@ -57,10 +57,35 @@ class PublicSubmissionController extends Controller
             $rawProofUrl = 'https://'.$rawProofUrl;
         }
 
+        // Normalisasi jam, menit, detik: handle input dengan leading zero (contoh "01" -> 1)
+        $rawHours = $request->input('hours');
+        if ($rawHours !== null && $rawHours !== '') {
+            $rawHours = is_numeric($rawHours) ? (int) $rawHours : $rawHours;
+        } else {
+            $rawHours = 0;
+        }
+
+        $rawMinutes = $request->input('minutes');
+        if ($rawMinutes !== null && $rawMinutes !== '') {
+            $rawMinutes = is_numeric($rawMinutes) ? (int) $rawMinutes : $rawMinutes;
+        } else {
+            $rawMinutes = 0;
+        }
+
+        $rawSeconds = $request->input('seconds');
+        if ($rawSeconds !== null && $rawSeconds !== '') {
+            $rawSeconds = is_numeric($rawSeconds) ? (int) $rawSeconds : $rawSeconds;
+        } else {
+            $rawSeconds = 0;
+        }
+
         $request->merge([
             'bib_number' => $rawBib,
             'distance_km' => $rawDistance,
             'proof_url' => $rawProofUrl !== '' ? $rawProofUrl : null,
+            'hours' => $rawHours,
+            'minutes' => $rawMinutes,
+            'seconds' => $rawSeconds,
         ]);
 
         $validated = $request->validate([
@@ -80,6 +105,15 @@ class PublicSubmissionController extends Controller
             'distance_km.required' => 'Jarak tempuh lari wajib diisi.',
             'distance_km.numeric' => 'Jarak tempuh harus berupa angka desimal (contoh: 5.25).',
             'distance_km.min' => 'Jarak tempuh minimal 0.01 KM.',
+            'hours.integer' => 'Durasi Jam harus berupa angka (contoh: 1 atau 0).',
+            'hours.min' => 'Durasi Jam tidak boleh bernilai negatif.',
+            'hours.max' => 'Durasi Jam maksimal 99 jam.',
+            'minutes.integer' => 'Durasi Menit harus berupa angka antara 0 sampai 59.',
+            'minutes.min' => 'Durasi Menit tidak boleh bernilai negatif.',
+            'minutes.max' => 'Durasi Menit maksimal 59 menit.',
+            'seconds.integer' => 'Durasi Detik harus berupa angka antara 0 sampai 59.',
+            'seconds.min' => 'Durasi Detik tidak boleh bernilai negatif.',
+            'seconds.max' => 'Durasi Detik maksimal 59 detik.',
             'proof_url.required_without' => 'Harap sertakan link bukti lari (Strava/Garmin/Drive) ATAU unggah foto bukti lari.',
             'proof_url.url' => 'Format URL bukti lari tidak valid (contoh: https://www.strava.com/activities/12345).',
             'proof_image.required_without' => 'Harap unggah screenshot bukti GPS/treadmill ATAU sertakan link aktivitas publik.',
