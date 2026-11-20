@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\EventResource\Pages;
 
 use App\Filament\Resources\EventResource;
+use App\Services\ProductionPoExportService;
 use Filament\Actions;
 use Filament\Resources\Pages\EditRecord;
 
@@ -13,10 +14,21 @@ class EditEvent extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
+            Actions\Action::make('leaderboard')
+                ->label('🏆 Leaderboard')
+                ->icon('heroicon-o-trophy')
+                ->color('warning')
+                ->url(fn () => route('public.leaderboard.show', $this->record->slug))
+                ->openUrlInNewTab(),
+            Actions\Action::make('export_po_pabrik')
+                ->label('📦 Export PO Pabrik')
+                ->icon('heroicon-o-arrow-down-tray')
+                ->color('success')
+                ->action(fn (ProductionPoExportService $service) => $service->exportVendorPo($this->record)),
             Actions\Action::make('preview_ebib')
                 ->label('👁️ Preview E-BIB (PDF)')
                 ->icon('heroicon-o-eye')
-                ->color('warning')
+                ->color('info')
                 ->url(fn () => route('admin.events.preview_ebib', $this->record))
                 ->openUrlInNewTab(),
             Actions\DeleteAction::make(),

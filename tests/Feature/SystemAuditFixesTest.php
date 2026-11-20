@@ -7,12 +7,14 @@ use App\Jobs\SendPaymentPendingEmailJob;
 use App\Jobs\SendTicketEmailJob;
 use App\Models\Event;
 use App\Models\EventCategory;
+use App\Models\JerseySize;
 use App\Models\Order;
 use App\Models\Organizer;
 use App\Models\Participant;
 use App\Models\User;
 use App\Services\EbibPdfService;
 use App\Services\OrderManagementService;
+use App\Services\ProductionPoExportService;
 use App\Services\TripayService;
 use Filament\Facades\Filament;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -525,5 +527,86 @@ class SystemAuditFixesTest extends TestCase
         $participant->refresh();
         $this->assertEquals(10.0, (float) $participant->total_distance_km);
         $this->assertEquals(5401, (int) $participant->total_duration_seconds); // 3600 + 1800 + 1
+    }
+
+    public function test_production_po_export_service_separates_medals_and_jerseys_accurately(): void
+    {
+        $event = Event::create([
+            'organizer_id' => $this->organizer->id,
+            'title' => 'Kujang Virtual Run 2026',
+            'slug' => 'kujang-virtual-run-2026',
+            'race_location_name' => 'Bogor',
+            'event_start_date' => now()->addDays(30),
+            'registration_open_date' => now()->subDays(5),
+            'registration_close_date' => now()->addDays(20),
+            'status' => 'published',
+        ]);
+
+        $sizeL = JerseySize::create([
+            'event_id' => $event->id,
+            'size_name' => 'L',
+            'gender_type' => 'unisex',
+            'chest_width_cm' => 52,
+            'body_length_cm' => 70,
+            'is_unlimited' => true,
+        ]);
+
+        // 5 Kategori sesuai skenario user
+        $catMedalOnly = EventCategory::create(['event_id' => $event->id, 'name' => 'Medali Only', 'distance_km' => 10, 'normal_price' => 100000]);
+        $catJerseyEventOnly = EventCategory::create(['event_id' => $event->id, 'name' => 'Jersey Event Only', 'distance_km' => 10, 'normal_price' => 120000]);
+        $catJerseyFinisherOnly = EventCategory::create(['event_id' => $event->id, 'name' => 'Jersey Finisher Only', 'distance_km' => 10, 'normal_price' => 130000]);
+        $catLengkap = EventCategory::create(['event_id' => $event->id, 'name' => 'Lengkap Medali + Jersey Event + Jersey Finisher', 'distance_km' => 10, 'normal_price' => 250000]);
+        $catFinisherMedal = EventCategory::create(['event_id' => $event->id, 'name' => 'Jersey Finisher + Medali', 'distance_km' => 10, 'normal_price' => 200000]);
+
+        $order = Order::create([
+            'event_id' => $event->id,
+            'order_code' => 'JLTX-KUJANG-PO',
+            'customer_name' => 'Kujang Runner',
+            'customer_email' => 'kujang@runner.com',
+            'customer_phone' => '08123456789',
+            'subtotal' => 800000,
+            'grand_total' => 800000,
+            'status' => 'paid',
+        ]);
+
+        // 1. Peserta Medali Only -> Medali (1), Event (0), Finisher (0)
+        Participant::create(['order_id' => $order->id, 'event_category_id' => $catMedalOnly->id, 'full_name' => 'Pelari 1', 'bib_number' => '1001', 'gender' => 'male', 'birth_date' => '1995-01-01', 'phone' => '08123456789']);
+
+        // 2. Peserta Jersey Event Only -> Medali (0), Event (1), Finisher (0)
+        Participant::create(['order_id' => $order->id, 'event_category_id' => $catJerseyEventOnly->id, 'jersey_size_id' => $sizeL->id, 'jersey_type' => 'short', 'full_name' => 'Pelari 2', 'bib_number' => '1002', 'gender' => 'male', 'birth_date' => '1995-01-01', 'phone' => '08123456789']);
+
+        // 3. Peserta Jersey Finisher Only -> Medali (0), Event (0), Finisher (1)
+        Participant::create(['order_id' => $order->id, 'event_category_id' => $catJerseyFinisherOnly->id, 'jersey_size_id' => $sizeL->id, 'jersey_type' => 'long', 'full_name' => 'Pelari 3', 'bib_number' => '1003', 'gender' => 'male', 'birth_date' => '1995-01-01', 'phone' => '08123456789']);
+
+        // 4. Peserta Lengkap -> Medali (1), Event (1), Finisher (1)
+        Participant::create(['order_id' => $order->id, 'event_category_id' => $catLengkap->id, 'jersey_size_id' => $sizeL->id, 'jersey_type' => 'short', 'full_name' => 'Pelari 4', 'bib_number' => '1004', 'gender' => 'male', 'birth_date' => '1995-01-01', 'phone' => '08123456789']);
+
+        // 5. Peserta Finisher + Medali -> Medali (1), Event (0), Finisher (1)
+        Participant::create(['order_id' => $order->id, 'event_category_id' => $catFinisherMedal->id, 'jersey_size_id' => $sizeL->id, 'jersey_type' => 'singlet', 'full_name' => 'Pelari 5', 'bib_number' => '1005', 'gender' => 'male', 'birth_date' => '1995-01-01', 'phone' => '08123456789']);
+
+        // Total harus: Medali = 3, Jersey Event = 2, Jersey Finisher = 3
+        $service = app(ProductionPoExportService::class);
+        $response = $service->exportVendorPo($event);
+
+        $this->assertEquals(200, $response->getStatusCode());
+
+        ob_start();
+        $response->sendContent();
+        $csvContent = (string) ob_get_clean();
+
+        // Verifikasi Bagian-bagian CSV
+        $this->assertStringContainsString('BAGIAN 1: RINGKASAN ORDER PRODUKSI', $csvContent);
+        $this->assertStringContainsString('BAGIAN 2: DETAIL ORDER PABRIK MEDALI', $csvContent);
+        $this->assertStringContainsString('BAGIAN 3: DETAIL PO KONVEKSI - JERSEY EVENT', $csvContent);
+        $this->assertStringContainsString('BAGIAN 4: DETAIL PO KONVEKSI - JERSEY FINISHER', $csvContent);
+        $this->assertStringContainsString('BAGIAN 5: MANIFEST PACKING GUDANG & PENGIRIMAN RACEPACK', $csvContent);
+
+        // Verifikasi hasil hitungan akurat
+        // Medali: 3
+        $this->assertStringContainsString('"Keping Medali Finisher Logam",3', $csvContent);
+        // Jersey Event: 2
+        $this->assertStringContainsString('"Jersey Event Resmi",2', $csvContent);
+        // Jersey Finisher: 3
+        $this->assertStringContainsString('"Jersey Finisher Eksklusif",3', $csvContent);
     }
 }

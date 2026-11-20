@@ -65,6 +65,45 @@ class Participant extends Model
         };
     }
 
+    public function getsMedal(): bool
+    {
+        return $this->category ? $this->category->includesMedal() : false;
+    }
+
+    public function getsEventJersey(): bool
+    {
+        return $this->category ? $this->category->includesEventJersey() : false;
+    }
+
+    public function getsFinisherJersey(): bool
+    {
+        return $this->category ? $this->category->includesFinisherJersey() : false;
+    }
+
+    public function getEventJerseySpec(): string
+    {
+        if (! $this->getsEventJersey()) {
+            return '-';
+        }
+
+        $type = $this->jersey_type_label;
+        $size = $this->jerseySize?->size_name ?: 'All Size';
+
+        return "{$type} - Size {$size}";
+    }
+
+    public function getFinisherJerseySpec(): string
+    {
+        if (! $this->getsFinisherJersey()) {
+            return '-';
+        }
+
+        $type = $this->jersey_type_label;
+        $size = $this->jerseySize?->size_name ?: 'All Size';
+
+        return "{$type} - Size {$size}";
+    }
+
     protected static function booted(): void
     {
         static::creating(function ($participant) {

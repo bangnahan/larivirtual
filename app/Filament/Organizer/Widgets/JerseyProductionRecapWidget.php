@@ -5,6 +5,7 @@ namespace App\Filament\Organizer\Widgets;
 use App\Models\Event;
 use App\Models\OrderAddon;
 use App\Models\Participant;
+use App\Services\ProductionPoExportService;
 use Filament\Widgets\Widget;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -193,6 +194,11 @@ class JerseyProductionRecapWidget extends Widget
     public function exportCsv(): StreamedResponse
     {
         $event = $this->selectedEvent;
+
+        if ($event) {
+            return app(ProductionPoExportService::class)->exportVendorPo($event);
+        }
+
         $recap = $this->recapData;
 
         $eventTitle = $event ? $event->title : 'Event';

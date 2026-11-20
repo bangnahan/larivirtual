@@ -6,6 +6,7 @@ use App\Filament\Organizer\Resources\EventResource\Pages;
 use App\Models\Event;
 use App\Models\Organizer;
 use App\Services\MetaCapiService;
+use App\Services\ProductionPoExportService;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Notifications\Notification;
@@ -662,6 +663,18 @@ class EventResource extends Resource
                     ]),
             ])
             ->actions([
+                Tables\Actions\Action::make('leaderboard')
+                    ->label('Leaderboard')
+                    ->icon('heroicon-o-trophy')
+                    ->color('warning')
+                    ->url(fn (Event $record): string => route('public.leaderboard.show', $record->slug))
+                    ->openUrlInNewTab(),
+                Tables\Actions\Action::make('export_po_pabrik')
+                    ->label('PO Pabrik')
+                    ->icon('heroicon-o-arrow-down-tray')
+                    ->color('success')
+                    ->tooltip('Unduh Rekap PO Vendor: Medali, Jersey Event, Jersey Finisher, dan Manifest Packing')
+                    ->action(fn (Event $record, ProductionPoExportService $service) => $service->exportVendorPo($record)),
                 Tables\Actions\EditAction::make(),
             ])
             ->bulkActions([

@@ -68,6 +68,53 @@ class EventCategory extends Model
         };
     }
 
+    /**
+     * Cek apakah paket kategori ini berhak mendapatkan medali fisik
+     */
+    public function includesMedal(): bool
+    {
+        $name = strtolower($this->name);
+        if (str_contains($name, 'tanpa medali') || str_contains($name, 'no medal') || str_contains($name, 'jersey event only') || str_contains($name, 'jersey finisher only')) {
+            return false;
+        }
+
+        if (str_contains($name, 'medali') || str_contains($name, 'medal') || str_contains($name, 'lengkap') || str_contains($name, 'all in') || str_contains($name, 'komplit')) {
+            return true;
+        }
+
+        return (bool) $this->includes_medal;
+    }
+
+    /**
+     * Cek apakah paket kategori ini berhak mendapatkan Jersey Event resmi
+     */
+    public function includesEventJersey(): bool
+    {
+        $name = strtolower($this->name);
+        if (str_contains($name, 'medali only') || str_contains($name, 'jersey finisher only') || str_contains($name, 'finisher + medali') || str_contains($name, 'finisher only')) {
+            return false;
+        }
+
+        if (str_contains($name, 'jersey event') || str_contains($name, 'lengkap') || str_contains($name, 'all in') || str_contains($name, 'komplit')) {
+            return true;
+        }
+
+        return (bool) $this->includes_jersey;
+    }
+
+    /**
+     * Cek apakah paket kategori ini berhak mendapatkan Jersey Finisher eksklusif
+     */
+    public function includesFinisherJersey(): bool
+    {
+        $name = strtolower($this->name);
+        if (str_contains($name, 'jersey finisher') || str_contains($name, 'finisher only') || str_contains($name, 'finisher + medali') || str_contains($name, 'lengkap') || str_contains($name, 'all in') || str_contains($name, 'komplit')) {
+            return true;
+        }
+
+        return false;
+    }
+
     public function event(): BelongsTo
     {
         return $this->belongsTo(Event::class);
