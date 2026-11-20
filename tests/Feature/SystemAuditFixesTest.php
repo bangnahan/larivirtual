@@ -609,4 +609,105 @@ class SystemAuditFixesTest extends TestCase
         // Jersey Finisher: 3
         $this->assertStringContainsString('"Jersey Finisher Eksklusif",3', $csvContent);
     }
+
+    public function test_production_po_export_consolidates_duplicate_jersey_sizes_and_handles_complete_combo_packages(): void
+    {
+        $event = Event::create([
+            'organizer_id' => $this->organizer->id,
+            'title' => 'Event Duplikat Size Test',
+            'slug' => 'event-duplikat-size-test',
+            'race_location_name' => 'Bogor',
+            'event_start_date' => now()->addDays(30),
+            'registration_open_date' => now()->subDays(5),
+            'registration_close_date' => now()->addDays(20),
+            'status' => 'published',
+        ]);
+
+        // Hapus auto-seeded sizes lalu buat 2 size L (simulasi duplikat input di database)
+        $event->jerseySizes()->delete();
+
+        $sizeL_1 = JerseySize::create([
+            'event_id' => $event->id,
+            'size_name' => 'L',
+            'gender_type' => 'unisex',
+            'chest_width_cm' => 52,
+            'body_length_cm' => 72,
+            'is_unlimited' => true,
+        ]);
+
+        $sizeL_2 = JerseySize::create([
+            'event_id' => $event->id,
+            'size_name' => 'L',
+            'gender_type' => 'unisex',
+            'chest_width_cm' => 53,
+            'body_length_cm' => 72,
+            'is_unlimited' => true,
+        ]);
+
+        $catCombo = EventCategory::create([
+            'event_id' => $event->id,
+            'name' => 'Jersey Event + Finisher + Medali',
+            'distance_km' => 10,
+            'normal_price' => 300000,
+        ]);
+
+        $order = Order::create([
+            'event_id' => $event->id,
+            'order_code' => 'JLTX-COMBO-TEST',
+            'customer_name' => 'Combo Runner',
+            'customer_email' => 'combo@runner.com',
+            'customer_phone' => '08123456789',
+            'subtotal' => 600000,
+            'grand_total' => 600000,
+            'status' => 'paid',
+        ]);
+
+        // Peserta 1 memakai sizeL_1
+        Participant::create([
+            'order_id' => $order->id,
+            'event_category_id' => $catCombo->id,
+            'jersey_size_id' => $sizeL_1->id,
+            'jersey_type' => 'short',
+            'full_name' => 'Pelari A',
+            'bib_number' => '1001',
+            'gender' => 'male',
+            'birth_date' => '1995-01-01',
+            'phone' => '08123456789',
+        ]);
+
+        // Peserta 2 memakai sizeL_2
+        Participant::create([
+            'order_id' => $order->id,
+            'event_category_id' => $catCombo->id,
+            'jersey_size_id' => $sizeL_2->id,
+            'jersey_type' => 'long',
+            'full_name' => 'Pelari B',
+            'bib_number' => '1002',
+            'gender' => 'female',
+            'birth_date' => '1996-01-01',
+            'phone' => '08123456788',
+        ]);
+
+        $service = app(ProductionPoExportService::class);
+        $response = $service->exportVendorPo($event);
+
+        ob_start();
+        $response->sendContent();
+        $csv = (string) ob_get_clean();
+
+        // Kategori "Jersey Event + Finisher + Medali" harus dapat medali (2), jersey event (2), finisher (2)
+        $this->assertStringContainsString('"Jersey Event Resmi",2', $csv);
+        $this->assertStringContainsString('"Jersey Finisher Eksklusif",2', $csv);
+        $this->assertStringContainsString('"Keping Medali Finisher Logam",2', $csv);
+
+        // Baris ukuran L harus dikonsolidasi: Lengan pendek = 1, Lengan panjang = 1, Singlet = 0, Total = 2
+        // Format baris: L,Unisex,52,72,1,1,0,2
+        $this->assertStringContainsString('L,Unisex,52,72,1,1,0,2', $csv);
+
+        // Pastikan tidak ada baris size L kedua
+        $lines = explode("\n", $csv);
+        $sizeLLines = array_filter($lines, fn ($line) => str_starts_with(trim($line), 'L,Unisex'));
+        // Ada 2 kemunculan: 1 di Bagian 3 (Event Jersey) dan 1 di Bagian 4 (Finisher Jersey), bukan 4 baris!
+        $this->assertCount(2, $sizeLLines);
+    }
 }

@@ -28,7 +28,7 @@ class ProductionPoExportService
             fprintf($handle, chr(0xEF).chr(0xBB).chr(0xBF));
 
             // Ambil seluruh peserta dengan order lunas (paid)
-            $participants = Participant::with(['order.shippingAddress', 'category', 'jerseySize'])
+            $participants = Participant::with(['order.shippingAddress', 'order.addons', 'category', 'jerseySize'])
                 ->whereHas('order', function ($q) use ($event) {
                     $q->where('event_id', $event->id)
                         ->where('status', 'paid');
@@ -36,23 +36,37 @@ class ProductionPoExportService
                 ->orderBy('bib_number', 'asc')
                 ->get();
 
-            $jerseySizes = $event->jerseySizes()->orderBy('id', 'asc')->get();
+            // Konsolidasi ukuran jersey agar tidak ada baris ganda di PO vendor
+            $rawJerseySizes = $event->jerseySizes()->orderBy('id', 'asc')->get();
+            $consolidatedSizes = [];
+
+            foreach ($rawJerseySizes as $raw) {
+                $name = strtoupper(trim((string) $raw->size_name));
+                if (! isset($consolidatedSizes[$name])) {
+                    $consolidatedSizes[$name] = [
+                        'size_name' => $name,
+                        'gender_type' => $raw->gender_type ? ucfirst((string) $raw->gender_type) : 'Unisex',
+                        'chest_width_cm' => $raw->chest_width_cm ?: '-',
+                        'body_length_cm' => $raw->body_length_cm ?: '-',
+                    ];
+                }
+            }
 
             // 1. Hitung total medali per kategori
             $medalCountsByCategory = [];
             $totalMedals = 0;
 
-            // 2. Hitung matriks Jersey Event: [size_id][jersey_type] => count
+            // 2. Hitung matriks Jersey Event: [size_name][jersey_type] => count
             $eventJerseyMatrix = [];
             $totalEventJerseys = 0;
 
-            // 3. Hitung matriks Jersey Finisher: [size_id][jersey_type] => count
+            // 3. Hitung matriks Jersey Finisher: [size_name][jersey_type] => count
             $finisherJerseyMatrix = [];
             $totalFinisherJerseys = 0;
 
             foreach ($participants as $p) {
                 $category = $p->category;
-                $sizeId = $p->jersey_size_id ?: 'no_size';
+                $sizeName = $p->jerseySize ? strtoupper(trim((string) $p->jerseySize->size_name)) : 'no_size';
                 $type = $p->jersey_type ?: 'short';
 
                 // Medali
@@ -64,16 +78,55 @@ class ProductionPoExportService
 
                 // Jersey Event
                 if ($p->getsEventJersey()) {
-                    $eventJerseyMatrix[$sizeId][$type] = ($eventJerseyMatrix[$sizeId][$type] ?? 0) + 1;
+                    $eventJerseyMatrix[$sizeName][$type] = ($eventJerseyMatrix[$sizeName][$type] ?? 0) + 1;
                     $totalEventJerseys++;
                 }
 
                 // Jersey Finisher
                 if ($p->getsFinisherJersey()) {
-                    $finisherJerseyMatrix[$sizeId][$type] = ($finisherJerseyMatrix[$sizeId][$type] ?? 0) + 1;
+                    $finisherJerseyMatrix[$sizeName][$type] = ($finisherJerseyMatrix[$sizeName][$type] ?? 0) + 1;
                     $totalFinisherJerseys++;
                 }
             }
+
+            // Masukkan size jika ada yang dipilih peserta tapi belum tercatat di template master
+            foreach (array_unique(array_merge(array_keys($eventJerseyMatrix), array_keys($finisherJerseyMatrix))) as $name) {
+                if ($name !== 'no_size' && ! isset($consolidatedSizes[$name])) {
+                    $consolidatedSizes[$name] = [
+                        'size_name' => $name,
+                        'gender_type' => 'Unisex',
+                        'chest_width_cm' => '-',
+                        'body_length_cm' => '-',
+                    ];
+                }
+            }
+
+            // Urutkan size berdasarkan urutan standar konveksi baju lari
+            $standardOrder = [
+                'XS' => 1,
+                'S' => 2,
+                'M' => 3,
+                'L' => 4,
+                'XL' => 5,
+                'XXL' => 6,
+                '2XL' => 6,
+                '3XL' => 7,
+                '4XL' => 8,
+                '5XL' => 9,
+                '6XL' => 10,
+                '7XL' => 11,
+            ];
+
+            uasort($consolidatedSizes, function ($a, $b) use ($standardOrder) {
+                $orderA = $standardOrder[$a['size_name']] ?? 99;
+                $orderB = $standardOrder[$b['size_name']] ?? 99;
+
+                if ($orderA === $orderB) {
+                    return strcmp($a['size_name'], $b['size_name']);
+                }
+
+                return $orderA <=> $orderB;
+            });
 
             // Hitung Add-ons jika ada
             $addonsData = [];
@@ -164,10 +217,10 @@ class ProductionPoExportService
             $totalEventLong = 0;
             $totalEventSinglet = 0;
 
-            foreach ($jerseySizes as $j) {
-                $short = $eventJerseyMatrix[$j->id]['short'] ?? 0;
-                $long = $eventJerseyMatrix[$j->id]['long'] ?? 0;
-                $singlet = $eventJerseyMatrix[$j->id]['singlet'] ?? 0;
+            foreach ($consolidatedSizes as $sizeName => $info) {
+                $short = $eventJerseyMatrix[$sizeName]['short'] ?? 0;
+                $long = $eventJerseyMatrix[$sizeName]['long'] ?? 0;
+                $singlet = $eventJerseyMatrix[$sizeName]['singlet'] ?? 0;
                 $subtotal = $short + $long + $singlet;
 
                 $totalEventShort += $short;
@@ -175,10 +228,10 @@ class ProductionPoExportService
                 $totalEventSinglet += $singlet;
 
                 fputcsv($handle, [
-                    $j->size_name,
-                    ucfirst((string) $j->gender_type),
-                    $j->chest_width_cm ?: '-',
-                    $j->body_length_cm ?: '-',
+                    $info['size_name'],
+                    $info['gender_type'],
+                    $info['chest_width_cm'],
+                    $info['body_length_cm'],
                     $short,
                     $long,
                     $singlet,
@@ -242,10 +295,10 @@ class ProductionPoExportService
             $totalFinisherLong = 0;
             $totalFinisherSinglet = 0;
 
-            foreach ($jerseySizes as $j) {
-                $short = $finisherJerseyMatrix[$j->id]['short'] ?? 0;
-                $long = $finisherJerseyMatrix[$j->id]['long'] ?? 0;
-                $singlet = $finisherJerseyMatrix[$j->id]['singlet'] ?? 0;
+            foreach ($consolidatedSizes as $sizeName => $info) {
+                $short = $finisherJerseyMatrix[$sizeName]['short'] ?? 0;
+                $long = $finisherJerseyMatrix[$sizeName]['long'] ?? 0;
+                $singlet = $finisherJerseyMatrix[$sizeName]['singlet'] ?? 0;
                 $subtotal = $short + $long + $singlet;
 
                 $totalFinisherShort += $short;
@@ -253,10 +306,10 @@ class ProductionPoExportService
                 $totalFinisherSinglet += $singlet;
 
                 fputcsv($handle, [
-                    $j->size_name,
-                    ucfirst((string) $j->gender_type),
-                    $j->chest_width_cm ?: '-',
-                    $j->body_length_cm ?: '-',
+                    $info['size_name'],
+                    $info['gender_type'],
+                    $info['chest_width_cm'],
+                    $info['body_length_cm'],
                     $short,
                     $long,
                     $singlet,

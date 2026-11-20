@@ -91,12 +91,17 @@ class EventCategory extends Model
     public function includesEventJersey(): bool
     {
         $name = strtolower($this->name);
-        if (str_contains($name, 'medali only') || str_contains($name, 'jersey finisher only') || str_contains($name, 'finisher + medali') || str_contains($name, 'finisher only')) {
-            return false;
-        }
 
         if (str_contains($name, 'jersey event') || str_contains($name, 'lengkap') || str_contains($name, 'all in') || str_contains($name, 'komplit')) {
             return true;
+        }
+
+        if (str_contains($name, 'medali only') || str_contains($name, 'jersey finisher only') || str_contains($name, 'finisher only')) {
+            return false;
+        }
+
+        if (str_contains($name, 'finisher') && ! str_contains($name, 'event')) {
+            return false;
         }
 
         return (bool) $this->includes_jersey;
@@ -108,7 +113,12 @@ class EventCategory extends Model
     public function includesFinisherJersey(): bool
     {
         $name = strtolower($this->name);
-        if (str_contains($name, 'jersey finisher') || str_contains($name, 'finisher only') || str_contains($name, 'finisher + medali') || str_contains($name, 'lengkap') || str_contains($name, 'all in') || str_contains($name, 'komplit')) {
+
+        if (str_contains($name, 'jersey event only') || str_contains($name, 'medali only')) {
+            return false;
+        }
+
+        if (str_contains($name, 'finisher') || str_contains($name, 'lengkap') || str_contains($name, 'all in') || str_contains($name, 'komplit')) {
             return true;
         }
 
