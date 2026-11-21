@@ -406,10 +406,12 @@ class ProductionPoExportService
                     $addonSummary = $order->addons->map(fn ($oa) => $oa->addon_name.' (x'.$oa->quantity.')')->implode(', ');
                 }
 
-                $fullAddress = $shipping ? ($shipping->address ?: $p->address) : $p->address;
-                $city = $shipping ? ($shipping->city ?: $p->city) : $p->city;
-                $province = $shipping ? $shipping->province : '-';
-                $postalCode = $shipping ? $shipping->postal_code : '-';
+                $fullAddress = $shipping ? ($shipping->address_detail ?: $p->address) : $p->address;
+                $city = $shipping ? ($shipping->destination_city ?: $p->city) : $p->city;
+                $district = $shipping ? $shipping->destination_district : null;
+                $cityDisplay = $district ? "{$district}, {$city}" : ($city ?: '-');
+                $province = $shipping ? ($shipping->province ?: '-') : '-';
+                $postalCode = $shipping ? ($shipping->postal_code ?: '-') : '-';
 
                 fputcsv($handle, [
                     $no++,
@@ -418,9 +420,9 @@ class ProductionPoExportService
                     $p->full_name,
                     "'".($p->phone ?: '-'),
                     $fullAddress ?: '-',
-                    $city ?: '-',
-                    $province ?: '-',
-                    $postalCode ?: '-',
+                    $cityDisplay,
+                    $province,
+                    $postalCode,
                     $p->category?->name ?: '-',
                     $medalText,
                     $eventJerseyText,

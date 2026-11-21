@@ -11,6 +11,7 @@ use App\Models\JerseySize;
 use App\Models\Order;
 use App\Models\Organizer;
 use App\Models\Participant;
+use App\Models\SpxShippingRate;
 use App\Models\User;
 use App\Services\EbibPdfService;
 use App\Services\OrderManagementService;
@@ -709,5 +710,160 @@ class SystemAuditFixesTest extends TestCase
         $sizeLLines = array_filter($lines, fn ($line) => str_starts_with(trim($line), 'L,Unisex'));
         // Ada 2 kemunculan: 1 di Bagian 3 (Event Jersey) dan 1 di Bagian 4 (Finisher Jersey), bukan 4 baris!
         $this->assertCount(2, $sizeLLines);
+    }
+
+    public function test_checkout_rejects_order_with_physical_items_if_shipping_address_is_missing(): void
+    {
+        $event = Event::create([
+            'organizer_id' => $this->organizer->id,
+            'title' => 'Event Shipping Mandatory Test',
+            'slug' => 'event-shipping-mandatory-test',
+            'race_location_name' => 'Jakarta',
+            'event_start_date' => now()->addDays(30),
+            'registration_open_date' => now()->subDays(5),
+            'registration_close_date' => now()->addDays(20),
+            'status' => 'published',
+        ]);
+
+        $catMedal = EventCategory::create([
+            'event_id' => $event->id,
+            'name' => 'Medali Only',
+            'distance_km' => 5,
+            'normal_price' => 150000,
+            'quota' => 100,
+            'slots_taken' => 0,
+            'includes_medal' => true,
+            'includes_jersey' => false,
+        ]);
+
+        // Attempt checkout dengan field pengiriman kosong (seperti submit form web tanpa dropdown SPX)
+        $response = $this->post(route('public.register.checkout', $event->slug), [
+            'buyer_name' => 'Tester Address',
+            'buyer_email' => 'tester@address.com',
+            'buyer_phone' => '08123456789',
+            'payment_method' => 'QRIS',
+            'waiver_accepted' => '1',
+            'recipient_name' => '',
+            'recipient_phone' => '',
+            'destination_city' => '',
+            'destination_district' => '',
+            'address_detail' => '',
+            'participants' => [
+                [
+                    'category_id' => $catMedal->id,
+                    'bib_name' => 'Tester 1',
+                    'gender' => 'male',
+                ],
+            ],
+        ]);
+
+        $response->assertSessionHasErrors([
+            'destination_city',
+            'destination_district',
+            'address_detail',
+        ]);
+
+        $this->assertDatabaseMissing('orders', [
+            'customer_email' => 'tester@address.com',
+        ]);
+    }
+
+    public function test_checkout_successfully_enforces_spx_shipping_cost_for_physical_items(): void
+    {
+        $event = Event::create([
+            'organizer_id' => $this->organizer->id,
+            'title' => 'Event SPX Shipping Test',
+            'slug' => 'event-spx-shipping-test',
+            'race_location_name' => 'Jakarta',
+            'event_start_date' => now()->addDays(30),
+            'registration_open_date' => now()->subDays(5),
+            'registration_close_date' => now()->addDays(20),
+            'status' => 'published',
+        ]);
+
+        $size = $event->jerseySizes()->first();
+
+        $cat = EventCategory::create([
+            'event_id' => $event->id,
+            'name' => 'Jersey event + Medali',
+            'distance_km' => 10,
+            'normal_price' => 200000,
+            'quota' => 100,
+            'slots_taken' => 0,
+            'includes_medal' => true,
+            'includes_jersey' => true,
+        ]);
+
+        SpxShippingRate::create([
+            'origin_city' => 'TANGERANG',
+            'destination_city' => 'JAKARTA SELATAN',
+            'destination_district' => 'KEBAYORAN BARU',
+            'regular_rate_per_kg' => 12000,
+            'regular_sla_days' => 2,
+            'search_keyword' => 'jakarta selatan kebayoran baru',
+        ]);
+
+        Http::fake([
+            '*/transaction/create' => Http::response([
+                'success' => true,
+                'data' => [
+                    'reference' => 'DEV-SHIP123',
+                    'merchant_ref' => 'JLTX-SHIP',
+                    'payment_method' => 'QRIS',
+                    'amount' => 212000,
+                    'total_amount' => 212000,
+                    'checkout_url' => 'https://tripay.co.id/checkout/DEV-SHIP123',
+                    'expired_time' => now()->addHour()->timestamp,
+                ],
+            ], 200),
+        ]);
+
+        $response = $this->post(route('public.register.checkout', $event->slug), [
+            'buyer_name' => 'Pelari SPX',
+            'buyer_email' => 'pelarispx@runner.com',
+            'buyer_phone' => '08123456789',
+            'payment_method' => 'QRIS',
+            'waiver_accepted' => '1',
+            'recipient_name' => 'Penerima Paket SPX',
+            'recipient_phone' => '08123456789',
+            'destination_city' => 'JAKARTA SELATAN',
+            'destination_district' => 'KEBAYORAN BARU',
+            'address_detail' => 'Jl. Senopati No. 12 RT 01 RW 02',
+            'postal_code' => '12190',
+            'province' => 'DKI Jakarta',
+            'participants' => [
+                [
+                    'category_id' => $cat->id,
+                    'jersey_size_id' => $size->id,
+                    'jersey_type' => 'short',
+                    'bib_name' => 'Pelari SPX',
+                    'gender' => 'male',
+                ],
+            ],
+        ]);
+
+        $order = Order::where('customer_email', 'pelarispx@runner.com')->first();
+        $this->assertNotNull($order);
+        $this->assertEquals(200000, (int) $order->subtotal);
+        $this->assertEquals(12000, (int) $order->shipping_cost);
+        $this->assertEquals(212000, (int) $order->grand_total);
+
+        $shipping = $order->shippingAddress;
+        $this->assertNotNull($shipping);
+        $this->assertEquals('JAKARTA SELATAN', $shipping->destination_city);
+        $this->assertEquals('KEBAYORAN BARU', $shipping->destination_district);
+        $this->assertEquals('Jl. Senopati No. 12 RT 01 RW 02', $shipping->address_detail);
+        $this->assertEquals(12000, (int) $shipping->shipping_cost);
+
+        // Verifikasi PO export menampilkan alamat lengkap & kota yang benar
+        $order->update(['status' => 'paid']);
+        $service = app(ProductionPoExportService::class);
+        $csvResponse = $service->exportVendorPo($event);
+        ob_start();
+        $csvResponse->sendContent();
+        $csvContent = (string) ob_get_clean();
+
+        $this->assertStringContainsString('Jl. Senopati No. 12 RT 01 RW 02', $csvContent);
+        $this->assertStringContainsString('KEBAYORAN BARU, JAKARTA SELATAN', $csvContent);
     }
 }

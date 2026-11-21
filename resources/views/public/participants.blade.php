@@ -859,6 +859,17 @@
                 const query = this.value.trim();
                 clearTimeout(searchTimeout);
 
+                // Reset nilai kota/kecamatan dan sembunyikan tarif jika user mengubah ketikan
+                destCityHidden.value = '';
+                destDistrictHidden.value = '';
+                shippingResultCard.classList.add('hidden');
+                if (window.Alpine) {
+                    const body = document.querySelector('body');
+                    if (body && body._x_dataStack && body._x_dataStack[0]) {
+                        body._x_dataStack[0].shippingCost = 0;
+                    }
+                }
+
                 if (query.length < 2) {
                     destDropdown.classList.add('hidden');
                     destDropdown.innerHTML = '';
@@ -900,6 +911,7 @@
                                     destCityHidden.value = city;
                                     destDistrictHidden.value = district;
                                     destDropdown.classList.add('hidden');
+                                    destInput.classList.remove('border-red-500', 'ring-2', 'ring-red-200');
 
                                     calculateSpxRate(city, district);
                                 });
@@ -910,6 +922,21 @@
                         });
                 }, 300);
             });
+
+            // Cegah submit form jika kota/kecamatan SPX belum dipilih
+            const checkoutForm = document.getElementById('checkoutForm');
+            if (checkoutForm) {
+                checkoutForm.addEventListener('submit', function (e) {
+                    if (destCityHidden && (!destCityHidden.value || !destDistrictHidden.value)) {
+                        e.preventDefault();
+                        alert('Mohon ketik dan klik salah satu Kota & Kecamatan dari hasil pencarian SPX untuk menghitung ongkir.');
+                        destInput.focus();
+                        destInput.classList.add('border-red-500', 'ring-2', 'ring-red-200');
+                        destInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        return false;
+                    }
+                });
+            }
 
             document.addEventListener('click', function (e) {
                 if (!destInput.contains(e.target) && !destDropdown.contains(e.target)) {

@@ -284,6 +284,15 @@ class OrderResource extends Resource
                 Tables\Filters\SelectFilter::make('event_id')
                     ->label('Filter Event')
                     ->relationship('event', 'title'),
+                Tables\Filters\TernaryFilter::make('has_shipping_address')
+                    ->label('Alamat Pengiriman')
+                    ->placeholder('Semua Pesanan')
+                    ->trueLabel('Ada Alamat')
+                    ->falseLabel('Tanpa Alamat')
+                    ->queries(
+                        true: fn ($query) => $query->whereHas('shippingAddress'),
+                        false: fn ($query) => $query->whereDoesntHave('shippingAddress'),
+                    ),
             ])
             ->actions([
                 Tables\Actions\Action::make('change_status')
